@@ -1,23 +1,13 @@
-import React from 'react';
-import { AuthProvider } from './configs/MyContexts';
+import React, { useState } from 'react';
+import { MyUserContext } from './configs/MyContexts';
 import AppNavigator from './navigation/AppNavigator';
-import { StyleSheet } from 'react-native';
-
 
 export default function App() {
+  const [loggedInUser, setLoggedInUser] = useState(null);
+
   return (
-    <AuthProvider>
+    <MyUserContext.Provider value={{ loggedInUser, setLoggedInUser }}>
       <AppNavigator />
-    </AuthProvider>
+    </MyUserContext.Provider>
   );
 }
-
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
