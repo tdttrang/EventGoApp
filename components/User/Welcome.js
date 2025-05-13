@@ -11,6 +11,12 @@ const Welcome = () => {
     const handleLogin = () => {
         navigation.navigate("Login");
     }
+
+    const handleSignup = () => {
+        navigation.navigate("Register");
+    }
+
+
   return (
     <SafeAreaView style ={MyStyles.container}>
       <Image source={require("../../assets/Logo.png")} style={styles.logo} />
@@ -28,7 +34,7 @@ const Welcome = () => {
       onPress={handleLogin}>
         <Text style={styles.loginText}>Login</Text>
       </TouchableOpacity>
-      <TouchableOpacity style= {styles.loginButton}>
+      <TouchableOpacity style= {styles.loginButton} onPress={handleSignup}>
         <Text style={styles.signupText}>Sign up</Text>
       </TouchableOpacity>
       </View>
