@@ -5,10 +5,17 @@ import { colors } from "../../utils/colors"
 import { fonts } from "../../utils/fonts"
 import Ionicons from "react-native-vector-icons/Ionicons";
 import SimpleLineIcons from "react-native-vector-icons/SimpleLineIcons";
+import { useNavigation } from "@react-navigation/native";
 
 const Login = () => {
+  const navigation = useNavigation();
   const [secureEntry, setSecureEntry] = useState(true);
-  
+
+  const handleSignup = () => {
+    navigation.navigate("Register");
+  }
+
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.textContainer}>
@@ -49,7 +56,9 @@ const Login = () => {
         </TouchableOpacity>
         <View style={styles.footerContainer}>
           <Text style={styles.accountText}>Dont't have an account?</Text>
-          <Text style={styles.signupText}>Sign up</Text>
+          <TouchableOpacity onPress={handleSignup}>
+            <Text style={styles.signupText}>Sign up</Text>
+          </TouchableOpacity>
         </View>
       </View>
     </SafeAreaView>
