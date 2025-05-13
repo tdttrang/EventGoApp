@@ -1,10 +1,11 @@
 import { StyleSheet } from "react-native";
+import { colors } from "../utils/colors";
+import { fonts } from "../utils/fonts"
 
 export default StyleSheet.create({
     container: {
         flex:1,
-        marginTop: 60,
-        justifyContent: "center",
+        backgroundColor: colors.white,
         alignItems: "center"
     }, event: {
         fontSize: 30,

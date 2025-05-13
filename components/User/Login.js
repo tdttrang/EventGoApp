@@ -1,32 +1,156 @@
-// components/User/Login.js
-import React, { useState, useContext } from 'react';
-import { View, TextInput, Button, Alert } from 'react-native';
-import axios from 'axios';
-import { AuthEndpoints } from '../../configs/Apis';
-import { AuthContext } from '../../configs/MyContexts';
+import React, {useState} from "react";
+import { View, Text, StyleSheet, SafeAreaView, TextInput, TouchableOpacity, Image } from "react-native";
+import MyStyles from "../../styles/MyStyles";
+import { colors } from "../../utils/colors"
+import { fonts } from "../../utils/fonts"
+import Ionicons from "react-native-vector-icons/Ionicons";
+import SimpleLineIcons from "react-native-vector-icons/SimpleLineIcons";
 
-const Login = ({ navigation }) => {
-  const { login } = useContext(AuthContext);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  const handleLogin = async () => {
-    try {
-      const response = await axios.post(AuthEndpoints.LOGIN, { email, password });
-      await login(response.data.token); // Assuming your context has a login function
-      navigation.replace('Home'); // Navigate to Home after successful login
-    } catch (error) {
-      Alert.alert('Login failed', 'Invalid credentials or network error');
-    }
-  };
-
+const Login = () => {
+  const [secureEntry, setSecureEntry] = useState(true);
+  
   return (
-    <View>
-      <TextInput placeholder="Email" value={email} onChangeText={setEmail} />
-      <TextInput placeholder="Password" secureTextEntry value={password} onChangeText={setPassword} />
-      <Button title="Login" onPress={handleLogin} />
-    </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.textContainer}>
+        <Text style ={styles.headingText}>Hey,</Text>
+        <Text style ={styles.headingText}>Welcome</Text>
+        <Text style ={styles.headingText}>Back</Text>
+        
+      </View>
+      {/* form login*/}
+      <View style={styles.formContainer}>
+        <View style={styles.inputContainer}>
+          <Ionicons name={"mail-outline"} size={25} color={colors.secondary} />
+          <TextInput style={styles.textInput} 
+          placeholder="Enter your email" placeholderTextColor={colors.secondary}
+          keyboardType="email-address"/>
+        </View>
+        <View style={styles.inputContainer}>
+          <SimpleLineIcons name={"lock"} size={25} color={colors.secondary} />
+          <TextInput style={styles.textInput} 
+          placeholder="Enter your passwod" placeholderTextColor={colors.secondary}
+          secureTextEntry={secureEntry}/>
+          <TouchableOpacity onPress={() => {
+            setSecureEntry((prev) => !prev); 
+          }}>
+            <SimpleLineIcons name={"eye"} size={20} color={colors.secondary} />
+          </TouchableOpacity>          
+        </View>
+        <TouchableOpacity>
+          <Text style={styles.forgotPassText}>Forgot Password?</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.loginButton}>
+          <Text style={styles.loginText}>Login</Text>
+        </TouchableOpacity>
+        <Text style= {styles.continueText}>or continue with</Text>
+        <TouchableOpacity style={styles.ggButton}>
+          <Image source={require("../../assets/Social Icons.png")} style={styles.ggImage}/>
+          <Text style={styles.ggText}>Google</Text>
+        </TouchableOpacity>
+        <View style={styles.footerContainer}>
+          <Text style={styles.accountText}>Dont't have an account?</Text>
+          <Text style={styles.signupText}>Sign up</Text>
+        </View>
+      </View>
+    </SafeAreaView>
+  
   );
 };
 
 export default Login;
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    alignItems: "center",
+    paddingHorizontal: 20,
+    backgroundColor: colors.white
+  },
+  textContainer: {
+    marginTop: 20,
+    alignSelf: "flex-start",
+  },
+  headingText: {
+    fontSize: 32,
+    color: colors.primary,
+    fontWeight: "500"
+  },
+  formContainer: {
+    marginTop: 20
+  },
+  inputContainer: {
+    borderWidth: 1,
+    borderColor: colors.secondary,
+    borderRadius: 100,
+    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    padding: 2,
+    marginVertical: 10,
+  }, 
+  textInput: {
+    flex: 1,
+    paddingHorizontal: 10,
+    //fontFamily: fonts.Light,
+    fontWeight: "300"
+  },
+  forgotPassText: {
+    textAlign: "right",
+    color: colors.primary,
+    fontWeight: "500",
+    marginVertical: 10,
+  },
+  loginButton: {
+    backgroundColor: colors.green,
+    borderRadius: 100,
+    marginTop: 20,
+  },
+  loginText: {
+    color: colors.white,
+    fontSize: 20,
+    fontWeight: "500",
+    textAlign: "center",
+    padding: 10,
+  },
+  continueText: {
+    textAlign: "center",
+    marginVertical: 20,
+    fontSize: 14,
+    fontFamily: fonts.Regular,
+    color: colors.primary
+  },
+  ggButton: {
+    flexDirection: "row",
+    borderWidth: 2,
+    borderColor: colors.primary,
+    borderRadius: 100,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 10,
+    gap: 10
+  },
+  ggImage: {
+    height: 20,
+    width: 20,
+  },
+  ggText: {
+    fontSize: 20,
+    fontWeight: "500",
+  },
+  footerContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginVertical: 20,
+    gap: 5
+  },
+  accountText: {
+    color: colors.primary,
+  },
+  signupText: {
+    color: colors.primary,
+    fontWeight: "600"
+  }
+
+})
