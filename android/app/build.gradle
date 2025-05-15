@@ -99,10 +99,11 @@ android {
     namespace 'com.anonymous.eventgoapp1'
     defaultConfig {
         applicationId 'com.anonymous.eventgoapp1'
-        minSdkVersion rootProject.ext.minSdkVersion
-        targetSdkVersion rootProject.ext.targetSdkVersion
+        minSdkVersion 24  // Đổi giá trị nếu cần
+        targetSdkVersion 35  // Đổi giá trị nếu cần
         versionCode 1
         versionName "1.0.0"
+        compileSdk 35
     }
     signingConfigs {
         debug {
