@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "561062351920",
+    "project_id": "eventgoapp-edaf2",
+    "storage_bucket": "eventgoapp-edaf2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:561062351920:android:97e0a4bf3be5a74b74c9f5",
+        "android_client_info": {
+          "package_name": "com.anonymous.eventgoapp1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBzry70rbIxNdCkEi2VzaeNXYvPSq9-a_I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
