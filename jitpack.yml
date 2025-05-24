@@ -1,6 +1,6 @@
 jdk:
   - openjdk17
 install:
-  - npm install
+  - cd android && ./gradlew clean
 build:
   - cd android && ./gradlew build

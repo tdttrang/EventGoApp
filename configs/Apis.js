@@ -4,7 +4,7 @@ const BASE_URL = "https://mynameisgiao.pythonanywhere.com/";
 
 export const endpoints = {
   login: "/o/token/",
-  currentUser: "/users/current-user/",
+  currentUser: "/current-user/profile/",
 };
 
 export const authApi = (accessToken) =>
