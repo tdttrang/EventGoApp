@@ -4,7 +4,7 @@ import { colors } from "../../utils/colors";
 
 const Booking = () => (
   <View style={styles.container}>
-    <Text style={styles.text}>Đây là màn hình Vé của tôi</Text>
+    <Text style={styles.text}>Giao đã ở đây!</Text>
   </View>
 );
 
