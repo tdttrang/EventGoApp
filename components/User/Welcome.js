@@ -1,26 +1,25 @@
-import React from 'react';
-import { View, Text, Button, StyleSheet, TouchableOpacity, Image, SafeAreaView } from 'react-native';
+import React from "react";
+import { View, Text, TouchableOpacity, Image, SafeAreaView, StyleSheet } from "react-native";
 import MyStyles from "../../styles/MyStyles";
-import { colors } from "../../utils/colors"
-import { fonts } from "../../utils/fonts"
-import { useNavigation } from '@react-navigation/native';
+import { colors } from "../../utils/colors";
+import { fonts } from "../../utils/fonts";
+import { useNavigation } from "@react-navigation/native";
 
 const Welcome = () => {
-    const navigation = useNavigation();
+  const navigation = useNavigation();
 
-    const handleLogin = () => {
-        navigation.navigate("Login");
-    }
+  const handleLogin = () => {
+  navigation.navigate("AuthStack", { screen: "Login" });
+};
 
-    const handleSignup = () => {
-        navigation.navigate("Register");
-    }
-
+const handleSignup = () => {
+  navigation.navigate("AuthStack", { screen: "Register" });
+};
 
   return (
-    <SafeAreaView style ={MyStyles.container}>
+    <SafeAreaView style={MyStyles.container}>
       <Image source={require("../../assets/Logo.png")} style={styles.logo} />
-      <Image  source={require("../../assets/welcome.png")} style={styles.bannerImage}/>
+      <Image source={require("../../assets/welcome.png")} style={styles.bannerImage} />
       <Text style={styles.title}>Welcome to EventGo!</Text>
       <Text style={styles.subTitle}>
         Ứng dụng đặt vé sự kiện nhanh chóng, tiện lợi và an toàn.
@@ -28,15 +27,15 @@ const Welcome = () => {
       </Text>
 
       <View style={styles.buttonContainer}>
-      <TouchableOpacity style= {[styles.loginButton,
-      { backgroundColor: colors.green }
-      ]}
-      onPress={handleLogin}>
-        <Text style={styles.loginText}>Login</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style= {styles.loginButton} onPress={handleSignup}>
-        <Text style={styles.signupText}>Sign up</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.loginButton, { backgroundColor: colors.green }]}
+          onPress={handleLogin}
+        >
+          <Text style={styles.loginText}>Login</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.loginButton} onPress={handleSignup}>
+          <Text style={styles.signupText}>Sign up</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -50,9 +49,9 @@ const styles = StyleSheet.create({
     width: 160,
     marginTop: 80,
     resizeMode: "contain",
-    alignSelf: "center"
+    alignSelf: "center",
   },
-  bannerImage:  {
+  bannerImage: {
     marginVertical: 25,
     height: 250,
     width: 231,
@@ -63,7 +62,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     textAlign: "center",
     color: colors.primary,
-    marginTop: 40
+    marginTop: 40,
   },
   subTitle: {
     fontSize: 16,
@@ -71,7 +70,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.Medium,
     paddingHorizontal: 20,
     marginVertical: 20,
-    textAlign: "center"
+    textAlign: "center",
   },
   buttonContainer: {
     marginTop: 20,
@@ -80,23 +79,23 @@ const styles = StyleSheet.create({
     borderColor: colors.primary,
     width: "80%",
     height: 60,
-    borderRadius: 100, 
-    overflow: "hidden"
+    borderRadius: 100,
+    overflow: "hidden",
   },
   loginButton: {
     justifyContent: "center",
     alignItems: "center",
     width: "50%",
-    //flex: 1,
-    borderRadius: 98
+    borderRadius: 98,
   },
   loginText: {
     color: colors.white,
     fontSize: 18,
-    fontFamily: fonts.SemiBold
+    fontFamily: fonts.SemiBold,
   },
   signupText: {
     fontSize: 18,
-    fontFamily: fonts.SemiBold
-  }
-})
+    fontFamily: fonts.SemiBold,
+    color: colors.primary,
+  },
+});

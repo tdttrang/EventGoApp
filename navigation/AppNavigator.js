@@ -1,73 +1,64 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-
-import Welcome from '../components/User/Welcome';
-import Login from '../components/User/Login';
-import Register from '../components/User/Register';
-import Home from '../components/Home/Home';
-import EventDetails from '../components/Event/EventDetails';
-import Search from '../components/Home/Search';
-import AuthStack from '../navigation/AuthStack';
-import AppStack from '../navigation/AppStack';
-import { authApi, endpoints } from '../configs/Apis';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MyUserContext } from '../configs/MyContexts';
+import React, { useContext, useEffect, useState } from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { ActivityIndicator, View } from "react-native";
+import Welcome from "../components/User/Welcome";
+import AuthStack from "./AuthStack";
+import AppStack from "./AppStack";
+import { authApi, endpoints } from "../configs/Apis";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { MyUserContext } from "../configs/MyContexts";
 
 const Stack = createNativeStackNavigator();
 
 const AppNavigator = () => {
+  const { loggedInUser, setLoggedInUser } = useContext(MyUserContext);
+  const [loading, setLoading] = useState(true);
 
-//   const { loggedInUser, setLoggedInUser } = useContext(MyUserContext);
-//   const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    const checkLogin = async () => {
+      try {
+        const token = await AsyncStorage.getItem("access");
+        if (token) {
+          const res = await authApi(token).get(endpoints.currentUser);
+          setLoggedInUser({
+            token,
+            ...res.data,
+          });
+        } else {
+          setLoggedInUser(null);
+        }
+      } catch (err) {
+        console.error("Lỗi khi lấy thông tin user:", err);
+        await AsyncStorage.removeItem("access");
+        setLoggedInUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-//   useEffect(() => {
-//   const checkLogin = async () => {
-//     try {
-//       const token = await AsyncStorage.getItem('access');
-//       if (token) {
-//         const res = await authApi(token).get(endpoints.currentUser);
-//         setLoggedInUser({
-//           token,
-//           ...res.data,
-//         });
-//       }
-//     } catch (err) {
-//       console.error("Lỗi khi lấy thông tin user:", err);
-//       await AsyncStorage.removeItem('access');
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
+    checkLogin();
+  }, []);
 
-//   checkLogin();
-// }, []);
-
-//   if (loading) {
-//   return null; // Hoặc trả về <ActivityIndicator />
-// }
-
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#1C2526" }}>
+        <ActivityIndicator size="large" color="#00B14F" />
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer>
-      <Stack.Navigator initialRouteName='Home' screenOptions={{ headerShown: false }}>
-        {/* {loggedInUser ? (
-          // Đã đăng nhập → chỉ cho vào Home
-                    <Stack.Screen name="Home" component={Home} options={{ headerShown: false }} />
-
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {loggedInUser ? (
+          <Stack.Screen name="AppStack" component={AppStack} />
         ) : (
-          // Chưa đăng nhập → Welcome/Login/Register
           <>
-                        <Stack.Screen name="Welcome" component={Welcome} options={{ headerShown: false }} />
-
-            <Stack.Screen name="Login" component={Login} />
-            <Stack.Screen name="Register" component={Register} />
+            <Stack.Screen name="Welcome" component={Welcome} />
+            <Stack.Screen name="AuthStack" component={AuthStack} />
           </>
-        )} */}
-        <Stack.Screen name="Home" component={Home} options={{ headerShown: false }} />
-        <Stack.Screen name="EventDetails" component={EventDetails} />
-        <Stack.Screen name="Search" component={Search} />
-
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );

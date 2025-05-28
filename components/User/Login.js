@@ -8,6 +8,8 @@ import SimpleLineIcons from "react-native-vector-icons/SimpleLineIcons";
 import { useNavigation } from "@react-navigation/native";
 import { MyUserContext } from "../../configs/MyContexts";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+
 
 
 const Login = () => {
@@ -49,78 +51,91 @@ const Login = () => {
   }, [navigation]);
 
 
-  const handleLogin = async () => {
-    if (username.trim() === "") {
-      setUsernameError("Please enter your username");
-      return;
-    } else {
-      setUsernameError("");
-    }
-    if (password.trim() === "") {
-      setPasswordError("Please enter your password");
-      return;
-    } else {
-      setPasswordError("");
-    }
-    setLoading(true);
+const handleLogin = async () => {
+  if (username.trim() === "") {
+    setUsernameError("Please enter your username");
+    return;
+  } else {
+    setUsernameError("");
+  }
+  if (password.trim() === "") {
+    setPasswordError("Please enter your password");
+    return;
+  } else {
+    setPasswordError("");
+  }
+  setLoading(true);
 
-    // Gọi API đăng nhập
-    try {
-      const response = await fetch("https://mynameisgiao.pythonanywhere.com/auth/login/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username: username,
-          password: password,
-          client_id: "UqSAsdIfXHAG8tKL3bYsIGSa2kGJIsPhmTLhW7oT",
-          client_secret: "ckJNtISlDERct7PiF9OSrJXPyQlE17GMlMuiPDM7ByZxNL9cIYTvv3P15XeJDiGd50MFF5PjspV7C990RPCcp4Tt5Hyk5HkODvk5kGFOiGKKPgy9D7pl4TkwerOEdfbk",
-          grant_type: "password",
-        }),
-      });
+  try {
+    const response = await axios.post("https://mynameisgiao.pythonanywhere.com/o/token/", {
+      username: username,
+      password: password,
+      client_id: "UqSAsdIfXHAG8tKL3bYsIGSa2kGJIsPhmTLhW7oT",
+      client_secret: "ckJNtISlDERct7PiF9OSrJXPyQlE17GMlMuiPDM7ByZxNL9cIYTvv3P15XeJDiGd50MFF5PjspV7C990RPCcp4Tt5Hyk5HkODvk5kGFOiGKKPgy9D7pl4TkwerOEdfbk",
+      grant_type: "password",
+    }, {
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",        
+      },
+      withCredentials: true, // cho phép gửi cookie nếu có
+    });
 
-      const data = await response.json();
-      console.log("Login response:", data);
-      if (response.ok) {
-        await AsyncStorage.setItem("access", data.access_token);
+    const data = response.data;
+    console.log("Login response:", data);
+    if (!data.access_token) {
+  console.log("Thiếu access_token trong response:", data);
+  Alert.alert("Lỗi", "Không nhận được access token từ máy chủ");
+  return;
+}
 
-        // Lấy thông tin người dùng từ endpoint /current-user/profile/
-        const userResponse = await fetch("https://mynameisgiao.pythonanywhere.com/current-user/profile/", {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${data.access_token}`,
-          },
-        });
-        const userData = await userResponse.json();
-        if (userResponse.ok) {
-          const role = userData.role || "attendee"; // Mặc định là attendee
-          if (!["admin", "organizer", "attendee"].includes(role)) {
-            throw new Error("Vai trò không hợp lệ");
-          }
-          setLoggedInUser({
-            token: data.access_token,
-            role: role,
-            ...userData,
-          });
-          Alert.alert(
-            "Đăng nhập thành công!",
-            `Chào mừng ${role === "admin" ? "Quản trị viên" : role === "organizer" ? "Nhà tổ chức" : "Người tham gia"}`
-          );
-          navigation.navigate("Home");
-        } else {
-          Alert.alert("Lỗi", userData.message || "Không thể lấy thông tin người dùng");
-        }
-      } else {
-        Alert.alert("Đăng nhập thất bại", data.message || "Tên đăng nhập hoặc mật khẩu không đúng");
+await AsyncStorage.setItem("access", data.access_token);
+    console.log("Full login response data:", JSON.stringify(data, null, 2));
+
+
+    await AsyncStorage.setItem("access", data.access_token);
+
+    // Lấy thông tin user
+    const userResponse = await axios.get("https://mynameisgiao.pythonanywhere.com/current-user/profile/", {
+      headers: {
+        Authorization: `Bearer ${data.access_token}`,
       }
-    } catch (error) {
-      console.error("Lỗi đăng nhập:", error);
-      Alert.alert("Lỗi", "Đã xảy ra lỗi, vui lòng thử lại sau");
-    } finally {
-      setLoading(false);
+    });
+
+    const userData = userResponse.data;
+
+    const role = userData.role || "attendee";
+    if (!["admin", "organizer", "attendee"].includes(role)) {
+      throw new Error("Vai trò không hợp lệ");
     }
-  };
+
+    setLoggedInUser({
+      token: data.access_token,
+      role: role,
+      ...userData,
+    });
+
+    Alert.alert(
+      "Đăng nhập thành công!",
+      `Chào mừng ${role === "admin" ? "Quản trị viên" : role === "organizer" ? "Nhà tổ chức" : "Người tham gia"}`
+    );
+    //navigation.navigate("BottomTab", { screen: "Home" });  } catch (error) {
+    console.error("Lỗi đăng nhập:", error);
+    if (error.response) {
+      console.log("Error response:", error.response.data); // Log chi tiết phản hồi lỗi từ API
+      console.log("Error status:", error.response.status);
+      console.log("Error headers:", error.response.headers);
+      Alert.alert("Đăng nhập thất bại", error.response.data.message || "Thông tin đăng nhập không hợp lệ");
+    } else if (error.request) {
+      console.log("Error request:", error.request); // Log nếu không nhận được phản hồi từ server
+      Alert.alert("Lỗi", "Không thể kết nối đến máy chủ, vui lòng kiểm tra kết nối mạng");
+    } else {
+      console.log("Error message:", error.message); // Log lỗi khác
+      Alert.alert("Lỗi", "Đã xảy ra lỗi, vui lòng thử lại sau");
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
 
   return (

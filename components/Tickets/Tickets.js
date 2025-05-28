@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { colors } from "../../utils/colors";
 
-const Booking = () => (
+const Tickets = () => (
   <View style={styles.container}>
     <Text style={styles.text}>Đây là màn hình Vé của tôi</Text>
   </View>
@@ -21,4 +21,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Booking;
+export default Tickets;
