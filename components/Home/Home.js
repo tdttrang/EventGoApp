@@ -31,6 +31,7 @@ const bannerItems = [
   { media_url: "https://wallpaperaccess.com/full/1381397.jpg", title: "Sự kiện #2", event_id: 3 },
 ];
 
+
 const Home = () => {
   const navigation = useNavigation();
   const [events, setEvents] = useState([]);
@@ -201,7 +202,7 @@ const renderBannerDots = () => (
   );
 
   return (
-    <SafeAreaView style={[styles.container, { paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0 }]}>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.green} translucent={true} />
       <View style={styles.header}>
         <Text style={styles.logo}>EventGo</Text>
@@ -281,13 +282,15 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
-    height: 60,
+    height: 56 + (Platform.OS === "android" ? StatusBar.currentHeight || 0 : 0), // tăng chiều cao
     backgroundColor: "#00C73E",
     position: "absolute", // Cố định header
-    top: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+    top: 0,
     left: 0,
     right: 0,
     zIndex: 10,
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight || 0 : 0, // thêm paddingTop
+
   },
   logo: {
     fontSize: 22,

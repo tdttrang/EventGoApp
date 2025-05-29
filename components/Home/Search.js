@@ -20,6 +20,8 @@ import moment from "moment";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { StatusBar } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import CustomHeader from "../CustomHeader";
 
 const Search = () => {
   const navigation = useNavigation();
@@ -44,6 +46,7 @@ const Search = () => {
     return () => clearTimeout(delayDebounce);
   }, [searchQuery, category, location, dateFilter, sortBy]);
 
+  const insets = useSafeAreaInsets();
   const fetchEvents = async (pageNum) => {
     if (!hasMore && pageNum !== 1) return;
     setLoading(true);
@@ -170,13 +173,10 @@ const Search = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.white} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Tìm kiếm</Text>
-        <View style={{ width: 24 }} />
-      </View>
+      <StatusBar backgroundColor={colors.green} barStyle="light-content" translucent={true} />
+    <View style={{ backgroundColor: colors.green, paddingTop: insets.top }}>
+      <CustomHeader title="Tìm kiếm" />
+    </View>
 
       <View style={styles.container}>
         <View style={styles.searchInputContainer}>
@@ -341,21 +341,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.base,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.green,
-    paddingHorizontal: 10,
-    paddingVertical: 15,
-    justifyContent: "space-between",
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.white,
-  },
+  },  
   container: {
     flex: 1,
     backgroundColor: colors.base,

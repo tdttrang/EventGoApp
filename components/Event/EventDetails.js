@@ -11,7 +11,7 @@ import {
   Platform,
   StatusBar,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context"; // Đã cài đặt
+import { SafeAreaView } from "react-native-safe-area-context";
 import { colors } from "../../utils/colors";
 import moment from "moment";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -115,9 +115,20 @@ const EventDetails = () => {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top"]}>
-      <StatusBar backgroundColor={colors.green} barStyle="light-content" />
-      <CustomHeader title="Chi tiết sự kiện" />
+    <>
+    {/* View này phủ màu xanh lên StatusBar */}
+    <View style={{
+      height: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+      backgroundColor: colors.green,
+      position: "absolute",
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 100,
+    }} />
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar backgroundColor={colors.green} barStyle="light-content" translucent={true} />
+      <CustomHeader title={event.name} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerContainer}>
           <Image
@@ -177,13 +188,14 @@ const EventDetails = () => {
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={styles.buyButton}
-            onPress={() => navigation.navigate("BookTicket", { eventId: event.id, tickets })}
+            onPress={() => navigation.navigate("SelectTickets", { eventId: event.id, tickets })}
           >
             <Text style={styles.buyButtonText}>Mua vé ngay</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
     </SafeAreaView>
+    </>
   );
 };
 
@@ -257,7 +269,7 @@ const styles = StyleSheet.create({
   buyButton: {
     backgroundColor: colors.green,
     borderRadius: 10,
-    paddingVertical: 15,
+    paddingVertical: 13,
     alignItems: "center",
   },
   buyButtonText: {
@@ -268,7 +280,6 @@ const styles = StyleSheet.create({
   buttonContainer: {
     paddingHorizontal: 15,
     paddingVertical: 10,
-    marginBottom: 10,
   },
   buttonSafeArea: {
     backgroundColor: colors.base,
