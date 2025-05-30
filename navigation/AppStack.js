@@ -7,6 +7,8 @@ import SelectTickets from "../components/Event/SelectTickets";
 import TicketInfo from "../components/Event/TicketInfo";
 import Payment from "../components/Event/Payment";
 import Home from "../components/Home/Home";
+import Tickets from "../components/Tickets/Tickets";
+import Reviews from "../components/Event/Reviews"
 
 const Stack = createNativeStackNavigator();
 
@@ -18,7 +20,9 @@ const AppStack = () => (
     <Stack.Screen name="SelectTickets" component={SelectTickets} />
     <Stack.Screen name="TicketInfo" component={TicketInfo} />
     <Stack.Screen name="Payment" component={Payment} />
+    <Stack.Screen name="Tickets" component={Tickets} />
     <Stack.Screen name="Home" component={Home} />
+    <Stack.Screen name="Reviews" component={Reviews} />
   </Stack.Navigator>
 );
 
