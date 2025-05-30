@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from "react-native";
 import Welcome from "../components/User/Welcome";
 import AuthStack from "./AuthStack";
 import AppStack from "./AppStack";
+import AdminStack from "./AdminStack";
 import { authApi, endpoints } from "../configs/Apis";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MyUserContext } from "../configs/MyContexts";
@@ -52,13 +53,18 @@ const AppNavigator = () => {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {loggedInUser ? (
-          <Stack.Screen name="AppStack" component={AppStack} />
+          loggedInUser.role === "admin" ? (
+            <Stack.Screen name="AdminStack" component={AdminStack} />
+          ) : (
+            <Stack.Screen name="AppStack" component={AppStack} />
+          )
         ) : (
           <>
             <Stack.Screen name="Welcome" component={Welcome} />
             <Stack.Screen name="AuthStack" component={AuthStack} />
           </>
         )}
+
       </Stack.Navigator>
     </NavigationContainer>
   );
