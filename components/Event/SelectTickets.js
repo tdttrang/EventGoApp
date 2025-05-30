@@ -21,23 +21,27 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 const SelectTickets = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { eventId, tickets } = route.params;
+  const { eventId, tickets: initialTickets } = route.params; // Lấy tickets từ route.params
   const [event, setEvent] = useState(null);
   const [selectedTickets, setSelectedTickets] = useState({});
   const [totalPrice, setTotalPrice] = useState(0);
   const [loadingEvent, setLoadingEvent] = useState(true);
 
   useEffect(() => {
+    console.log("Initial tickets:", initialTickets); // Debug dữ liệu ban đầu
     fetchEventDetails();
-    const initialSelectedTickets = {};
-    tickets.forEach((ticket) => {
-      initialSelectedTickets[ticket.id] = 0;
-    });
-    setSelectedTickets(initialSelectedTickets);
-  }, []);
+    if (initialTickets && Array.isArray(initialTickets)) {
+      const initialSelectedTickets = {};
+      initialTickets.forEach((ticket) => {
+        initialSelectedTickets[ticket.id] = 0;
+      });
+      setSelectedTickets(initialSelectedTickets);
+    } else {
+      console.warn("Tickets is not an array or undefined:", initialTickets);
+    }
+  }, [initialTickets]); // Thêm initialTickets làm dependency
 
-    const insets = useSafeAreaInsets();
-  
+  const insets = useSafeAreaInsets();
 
   const fetchEventDetails = async () => {
     setLoadingEvent(true);
@@ -85,11 +89,13 @@ const SelectTickets = () => {
       const updated = { ...prev, [ticketId]: newQuantity };
 
       let newTotal = 0;
-      tickets.forEach((ticket) => {
-        if (updated[ticket.id]) {
-          newTotal += updated[ticket.id] * parseFloat(ticket.price);
-        }
-      });
+      if (initialTickets && Array.isArray(initialTickets)) {
+        initialTickets.forEach((ticket) => {
+          if (updated[ticket.id]) {
+            newTotal += updated[ticket.id] * parseFloat(ticket.price);
+          }
+        });
+      }
       setTotalPrice(newTotal);
 
       return updated;
@@ -101,7 +107,7 @@ const SelectTickets = () => {
       Alert.alert("Thông báo", "Vui lòng chọn ít nhất một vé.");
       return;
     }
-    navigation.navigate("TicketInfo", { eventId, tickets, selectedTickets, totalPrice });
+    navigation.navigate("TicketInfo", { eventId, tickets: initialTickets, selectedTickets, totalPrice, eventName: event.name });
   };
 
   if (loadingEvent) {
@@ -124,7 +130,7 @@ const SelectTickets = () => {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar backgroundColor={colors.green} barStyle="light-content" />
       <View style={{ paddingTop: insets.top, backgroundColor: colors.green }}>
-      <CustomHeader title="Đặt vé" />
+        <CustomHeader title="Đặt vé" />
       </View>
       <View style={styles.stepper}>
         <Text style={[styles.stepText, styles.stepActive]}>Chọn vé</Text>
@@ -149,32 +155,36 @@ const SelectTickets = () => {
           {/* Danh sách vé */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Chọn vé</Text>
-            {tickets.map((ticket) => (
-              <View key={ticket.id} style={styles.ticketCard}>
-                <View style={styles.ticketInfo}>
-                  <Text style={styles.ticketType}>{getTicketClassDisplay(ticket.ticket_class)}</Text>
-                  <Text style={[styles.ticketPrice, { color: colors.green }]}>
-                    {formatPrice(ticket.price)}
-                  </Text>
+            {initialTickets && Array.isArray(initialTickets) && initialTickets.length > 0 ? (
+              initialTickets.map((ticket) => (
+                <View key={ticket.id} style={styles.ticketCard}>
+                  <View style={styles.ticketInfo}>
+                    <Text style={styles.ticketType}>{getTicketClassDisplay(ticket.ticket_class)}</Text>
+                    <Text style={[styles.ticketPrice, { color: colors.green }]}>
+                      {formatPrice(ticket.price)}
+                    </Text>
+                  </View>
+                  <View style={styles.quantitySelector}>
+                    <TouchableOpacity
+                      onPress={() => updateTicketQuantity(ticket.id, -1)}
+                      disabled={selectedTickets[ticket.id] === 0}
+                    >
+                      <Ionicons
+                        name="remove-circle-outline"
+                        size={24}
+                        color={selectedTickets[ticket.id] === 0 ? colors.secondary : colors.green}
+                      />
+                    </TouchableOpacity>
+                    <Text style={styles.quantityText}>{selectedTickets[ticket.id] || 0}</Text>
+                    <TouchableOpacity onPress={() => updateTicketQuantity(ticket.id, 1)}>
+                      <Ionicons name="add-circle-outline" size={24} color={colors.green} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-                <View style={styles.quantitySelector}>
-                  <TouchableOpacity
-                    onPress={() => updateTicketQuantity(ticket.id, -1)}
-                    disabled={selectedTickets[ticket.id] === 0}
-                  >
-                    <Ionicons
-                      name="remove-circle-outline"
-                      size={24}
-                      color={selectedTickets[ticket.id] === 0 ? colors.secondary : colors.green}
-                    />
-                  </TouchableOpacity>
-                  <Text style={styles.quantityText}>{selectedTickets[ticket.id] || 0}</Text>
-                  <TouchableOpacity onPress={() => updateTicketQuantity(ticket.id, 1)}>
-                    <Ionicons name="add-circle-outline" size={24} color={colors.green} />
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
+              ))
+            ) : (
+              <Text style={styles.errorText}>Không có vé nào để chọn.</Text>
+            )}
           </View>
 
           {/* Tổng tiền */}
