@@ -219,9 +219,18 @@ const Profile = () => {
   };
 
   const handleLogout = async () => {
-    await AsyncStorage.removeItem("access");
-    await AsyncStorage.removeItem("refresh");
-    setLoggedInUser(null);
+    Alert.alert("Đăng xuất", "Bạn có chắc chắn muốn đăng xuất không?", [
+      { text: "Hủy", style: "cancel" },
+      {
+        text: "Đăng xuất",
+        style: "destructive",
+        onPress: async () => {
+          await AsyncStorage.removeItem("access");
+          await AsyncStorage.removeItem("refresh");
+          setLoggedInUser(null);
+        },
+      },
+    ]);
   };
 
   if (loading) {
