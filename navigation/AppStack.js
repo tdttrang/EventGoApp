@@ -24,6 +24,7 @@ const AppStack = () => (
     <Stack.Screen name="Tickets" component={Tickets} />
     <Stack.Screen name="Home" component={Home} />
     <Stack.Screen name="Reviews" component={Reviews} />
+    <Stack.Screen name="ManageEvents" component={ManageEvents} />
   </Stack.Navigator>
 );
 
