@@ -67,39 +67,46 @@ const handleLogin = async () => {
   setLoading(true);
 
   try {
-    const response = await axios.post("https://mynameisgiao.pythonanywhere.com/o/token/", {
-      username: username,
-      password: password,
-      client_id: "UqSAsdIfXHAG8tKL3bYsIGSa2kGJIsPhmTLhW7oT",
-      client_secret: "ckJNtISlDERct7PiF9OSrJXPyQlE17GMlMuiPDM7ByZxNL9cIYTvv3P15XeJDiGd50MFF5PjspV7C990RPCcp4Tt5Hyk5HkODvk5kGFOiGKKPgy9D7pl4TkwerOEdfbk",
-      grant_type: "password",
-    }, {
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",        
+    const response = await axios.post(
+      "https://mynameisgiao.pythonanywhere.com/o/token/",
+      {
+        username: username,
+        password: password,
+        client_id: "UqSAsdIfXHAG8tKL3bYsIGSa2kGJIsPhmTLhW7oT",
+        client_secret:
+          "ckJNtISlDERct7PiF9OSrJXPyQlE17GMlMuiPDM7ByZxNL9cIYTvv3P15XeJDiGd50MFF5PjspV7C990RPCcp4Tt5Hyk5HkODvk5kGFOiGKKPgy9D7pl4TkwerOEdfbk",
+        grant_type: "password",
       },
-      withCredentials: true, // cho phép gửi cookie nếu có
-    });
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        withCredentials: true, // cho phép gửi cookie nếu có
+      }
+    );
 
     const data = response.data;
     console.log("Login response:", data);
     if (!data.access_token) {
-  console.log("Thiếu access_token trong response:", data);
-  Alert.alert("Lỗi", "Không nhận được access token từ máy chủ");
-  return;
-}
+      console.log("Thiếu access_token trong response:", data);
+      Alert.alert("Lỗi", "Không nhận được access token từ máy chủ");
+      return;
+    }
 
-await AsyncStorage.setItem("access", data.access_token);
+    await AsyncStorage.setItem("access", data.access_token);
     console.log("Full login response data:", JSON.stringify(data, null, 2));
-
 
     await AsyncStorage.setItem("access", data.access_token);
 
     // Lấy thông tin user
-    const userResponse = await axios.get("https://mynameisgiao.pythonanywhere.com/current-user/profile/", {
-      headers: {
-        Authorization: `Bearer ${data.access_token}`,
+    const userResponse = await axios.get(
+      "https://mynameisgiao.pythonanywhere.com/current-user/profile/",
+      {
+        headers: {
+          Authorization: `Bearer ${data.access_token}`,
+        },
       }
-    });
+    );
 
     const userData = userResponse.data;
 
@@ -116,20 +123,33 @@ await AsyncStorage.setItem("access", data.access_token);
 
     Alert.alert(
       "Đăng nhập thành công!",
-      `Chào mừng ${role === "admin" ? "Quản trị viên" : role === "organizer" ? "Nhà tổ chức" : "Người tham gia"}`
+      `Chào mừng ${
+        role === "admin"
+          ? "Quản trị viên"
+          : role === "organizer"
+          ? "Nhà tổ chức"
+          : "Người tham gia"
+      }`
     );
-    //navigation.navigate("BottomTab", { screen: "Home" });  } catch (error) {
-    console.error("Lỗi đăng nhập:", error);
+    //navigation.navigate("BottomTab", { screen: "Home" });
+  } catch (error) {
     if (error.response) {
-      console.log("Error response:", error.response.data); // Log chi tiết phản hồi lỗi từ API
-      console.log("Error status:", error.response.status);
-      console.log("Error headers:", error.response.headers);
-      Alert.alert("Đăng nhập thất bại", error.response.data.message || "Thông tin đăng nhập không hợp lệ");
+      let msg = error.response.data.error_description ||
+                error.response.data.message ||
+                "Sai tên đăng nhập hoặc mật khẩu";
+      if (msg === "Invalid credentials given.") {
+        msg = "Sai tên đăng nhập hoặc mật khẩu";
+      }
+      Alert.alert(
+        "Đăng nhập thất bại",
+        msg
+      );
     } else if (error.request) {
-      console.log("Error request:", error.request); // Log nếu không nhận được phản hồi từ server
-      Alert.alert("Lỗi", "Không thể kết nối đến máy chủ, vui lòng kiểm tra kết nối mạng");
+      Alert.alert(
+        "Lỗi",
+        "Không thể kết nối đến máy chủ, vui lòng kiểm tra kết nối mạng"
+      );
     } else {
-      console.log("Error message:", error.message); // Log lỗi khác
       Alert.alert("Lỗi", "Đã xảy ra lỗi, vui lòng thử lại sau");
     }
   } finally {
