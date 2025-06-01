@@ -21,8 +21,17 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.eventgoapp1"
+      "package": "com.anonymous.eventgoapp1",
+      "googleServicesFile": "./google-services.json"
     },
+    "notifications": [
+      {
+        "android": {
+          "useNextNotificationsApi": true
+        }
+      }
+    ],
+
     "web": {
       "favicon": "./assets/favicon.png"
     },
