@@ -8,8 +8,10 @@ import TicketInfo from "../components/Event/TicketInfo";
 import Payment from "../components/Event/Payment";
 import Home from "../components/Home/Home";
 import Tickets from "../components/Tickets/Tickets";
-import Reviews from "../components/Event/Reviews";
+import Reviews from "../components/Event/ReviewsNReply";
 import ManageEvents from "../components/Event/ManageEvents";
+import Notifications from "../components/Notifications/Notifications"; 
+
 
 const Stack = createNativeStackNavigator();
 
