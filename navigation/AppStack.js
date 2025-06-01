@@ -27,6 +27,7 @@ const AppStack = () => (
     <Stack.Screen name="Home" component={Home} />
     <Stack.Screen name="Reviews" component={Reviews} />
     <Stack.Screen name="ManageEvents" component={ManageEvents} />
+    <Stack.Screen name="Notifications" component={Notifications} />
   </Stack.Navigator>
 );
 
