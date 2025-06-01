@@ -13,10 +13,13 @@ import {
   Modal,
   Platform,
   Keyboard,
+  ScrollView,
+  KeyboardAvoidingView,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
+import { Picker } from "@react-native-picker/picker"; // Cần cài: expo install @react-native-picker/picker
 import { colors } from "../../utils/colors";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -31,19 +34,22 @@ const CreateEventForm = React.memo(
     setShowCreateForm,
     nameRef,
     descriptionRef,
+    dateRef,
     timeRef,
     locationRef,
-    ticketPriceRef,
     categoryRef,
   }) => {
     const [localEvent, setLocalEvent] = useState({
       id: newEvent.id,
       name: newEvent.name,
       description: newEvent.description,
-      time: newEvent.time,
+      date: newEvent.date || "",
+      time: newEvent.time || "",
       location: newEvent.location,
-      ticketPrice: newEvent.ticketPrice,
-      category: newEvent.category || "Music", // Giá trị mặc định
+      tickets: newEvent.tickets || [
+        { ticket_class: "normal", price: "", quantity: "" },
+      ], // Mảng vé động
+      category: newEvent.category || "Music",
     });
 
     const handleFocus = (ref) => {
@@ -57,14 +63,43 @@ const CreateEventForm = React.memo(
       }));
     };
 
+    const updateTicketField = (index, field, value) => {
+      setLocalEvent((prev) => {
+        const newTickets = [...prev.tickets];
+        newTickets[index] = { ...newTickets[index], [field]: value };
+        return { ...prev, tickets: newTickets };
+      });
+    };
+
+    const addTicket = () => {
+      setLocalEvent((prev) => ({
+        ...prev,
+        tickets: [
+          ...prev.tickets,
+          { ticket_class: "normal", price: "", quantity: "" },
+        ],
+      }));
+    };
+
+    const removeTicket = (index) => {
+      setLocalEvent((prev) => {
+        const newTickets = prev.tickets.filter((_, i) => i !== index);
+        return { ...prev, tickets: newTickets };
+      });
+    };
+
     const saveAndCreate = () => {
-      // Kiểm tra dữ liệu trước khi gửi
+      // Validate dữ liệu
       if (!localEvent.name.trim()) {
         Alert.alert("Lỗi", "Tên sự kiện không được để trống.");
         return;
       }
       if (!localEvent.description.trim()) {
         Alert.alert("Lỗi", "Mô tả không được để trống.");
+        return;
+      }
+      if (!localEvent.date.trim()) {
+        Alert.alert("Lỗi", "Ngày không được để trống.");
         return;
       }
       if (!localEvent.time.trim()) {
@@ -79,24 +114,65 @@ const CreateEventForm = React.memo(
         Alert.alert("Lỗi", "Danh mục không được để trống.");
         return;
       }
-      const ticketPrice = parseFloat(localEvent.ticketPrice);
-      if (isNaN(ticketPrice) || localEvent.ticketPrice.trim() === "") {
-        Alert.alert("Lỗi", "Giá vé phải là một số hợp lệ.");
+
+      const tickets = localEvent.tickets
+        .map((ticket) => {
+          const price = parseFloat(ticket.price);
+          const quantity = parseInt(ticket.quantity);
+          if (!["normal", "VIP"].includes(ticket.ticket_class)) {
+            Alert.alert("Lỗi", "Loại vé phải là 'normal' hoặc 'VIP'.");
+            return null;
+          }
+          if (isNaN(price) || price <= 0) {
+            Alert.alert("Lỗi", "Giá vé phải là số thực dương.");
+            return null;
+          }
+          if (isNaN(quantity) || quantity <= 0) {
+            Alert.alert("Lỗi", "Số lượng vé phải là số nguyên dương.");
+            return null;
+          }
+          return { ticket_class: ticket.ticket_class, price, quantity };
+        })
+        .filter((ticket) => ticket !== null);
+
+      if (tickets.length === 0) {
+        Alert.alert("Lỗi", "Ít nhất cần một loại vé.");
         return;
       }
 
-      // Cập nhật newEvent và gọi handleCreateEvent
+      // Kiểm tra định dạng ngày (YYYY-MM-DD)
+      if (!localEvent.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        Alert.alert(
+          "Lỗi",
+          "Ngày phải có định dạng YYYY-MM-DD (VD: 2025-09-14)."
+        );
+        return;
+      }
+
+      // Kiểm tra định dạng thời gian (HH:mm)
+      if (!localEvent.time.match(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/)) {
+        Alert.alert("Lỗi", "Thời gian phải có định dạng HH:mm (VD: 19:00).");
+        return;
+      }
+
       const updatedEvent = {
         ...localEvent,
-        ticketPrice: ticketPrice.toString(),
+        date: localEvent.date,
+        time: localEvent.time,
+        tickets,
       };
       setNewEvent(updatedEvent);
 
-      // Log để kiểm tra dữ liệu trước khi gửi
       console.log("Dữ liệu sẽ gửi:", updatedEvent);
 
       handleCreateEvent(updatedEvent);
     };
+
+    // Dropdown options cho ticket_class
+    const ticketOptions = [
+      { label: "Vé thường", value: "normal" },
+      { label: "Vé VIP", value: "VIP" },
+    ];
 
     return (
       <Modal
@@ -108,109 +184,171 @@ const CreateEventForm = React.memo(
           Keyboard.dismiss();
         }}
       >
-        <View style={styles.modalContainer}>
-          <View
-            style={[styles.modalContent, { paddingTop: 32, paddingBottom: 16 }]}
-          >
-            <Text style={styles.modalTitle}>
-              {isEditing ? "Chỉnh sửa sự kiện" : "Tạo mới sự kiện"}
-            </Text>
-
-            <TextInput
-              ref={nameRef}
-              style={styles.input}
-              value={localEvent.name}
-              onChangeText={(text) => updateLocalField("name", text)}
-              placeholder="Tên sự kiện"
-              placeholderTextColor={colors.secondary}
-              returnKeyType="next"
-              onSubmitEditing={() => handleFocus(descriptionRef)}
-              blurOnSubmit={false}
-              autoFocus
-            />
-
-            <TextInput
-              ref={descriptionRef}
-              style={styles.input}
-              value={localEvent.description}
-              onChangeText={(text) => updateLocalField("description", text)}
-              placeholder="Mô tả"
-              placeholderTextColor={colors.secondary}
-              multiline
-              returnKeyType="next"
-              onSubmitEditing={() => handleFocus(timeRef)}
-              blurOnSubmit={false}
-            />
-
-            <TextInput
-              ref={timeRef}
-              style={styles.input}
-              value={localEvent.time}
-              onChangeText={(text) => updateLocalField("time", text)}
-              placeholder="Thời gian (VD: 2025-06-01 14:00)"
-              placeholderTextColor={colors.secondary}
-              returnKeyType="next"
-              onSubmitEditing={() => handleFocus(locationRef)}
-              blurOnSubmit={false}
-            />
-
-            <TextInput
-              ref={locationRef}
-              style={styles.input}
-              value={localEvent.location}
-              onChangeText={(text) => updateLocalField("location", text)}
-              placeholder="Địa điểm"
-              placeholderTextColor={colors.secondary}
-              returnKeyType="next"
-              onSubmitEditing={() => handleFocus(categoryRef)}
-              blurOnSubmit={false}
-            />
-
-            <TextInput
-              ref={categoryRef}
-              style={styles.input}
-              value={localEvent.category}
-              onChangeText={(text) => updateLocalField("category", text)}
-              placeholder="Danh mục (VD: Music, Sports)"
-              placeholderTextColor={colors.secondary}
-              returnKeyType="next"
-              onSubmitEditing={() => handleFocus(ticketPriceRef)}
-              blurOnSubmit={false}
-            />
-
-            <TextInput
-              ref={ticketPriceRef}
-              style={styles.input}
-              value={localEvent.ticketPrice}
-              onChangeText={(text) => updateLocalField("ticketPrice", text)}
-              placeholder="Giá vé"
-              keyboardType="numeric"
-              placeholderTextColor={colors.secondary}
-              returnKeyType="done"
-              onSubmitEditing={saveAndCreate}
-              blurOnSubmit={false}
-            />
-
-            <TouchableOpacity
-              style={styles.createButton}
-              onPress={saveAndCreate}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={{ flex: 1 }}
+        >
+          <View style={styles.modalContainer}>
+            <View
+              style={[
+                styles.modalContent,
+                { paddingTop: 32, paddingBottom: 16 },
+              ]}
             >
-              <Text style={styles.buttonText}>
-                {isEditing ? "Cập nhật sự kiện" : "Tạo sự kiện"}
+              <Text style={styles.modalTitle}>
+                {isEditing ? "Chỉnh sửa sự kiện" : "Tạo mới sự kiện"}
               </Text>
-            </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.createButton, { backgroundColor: colors.red }]}
-              onPress={() => {
-                setShowCreateForm(false);
-                Keyboard.dismiss();
-              }}
-            >
-              <Text style={styles.buttonText}>Hủy</Text>
-            </TouchableOpacity>
+              <ScrollView
+                contentContainerStyle={{ paddingBottom: 20 }}
+                keyboardShouldPersistTaps="handled"
+              >
+                <TextInput
+                  ref={nameRef}
+                  style={styles.input}
+                  value={localEvent.name}
+                  onChangeText={(text) => updateLocalField("name", text)}
+                  placeholder="Tên sự kiện"
+                  placeholderTextColor={colors.secondary}
+                  returnKeyType="next"
+                  onSubmitEditing={() => handleFocus(descriptionRef)}
+                  blurOnSubmit={false}
+                  autoFocus
+                />
+
+                <TextInput
+                  ref={descriptionRef}
+                  style={styles.input}
+                  value={localEvent.description}
+                  onChangeText={(text) => updateLocalField("description", text)}
+                  placeholder="Mô tả"
+                  placeholderTextColor={colors.secondary}
+                  multiline
+                  returnKeyType="next"
+                  onSubmitEditing={() => handleFocus(dateRef)}
+                  blurOnSubmit={false}
+                />
+
+                <TextInput
+                  ref={dateRef}
+                  style={styles.input}
+                  value={localEvent.date}
+                  onChangeText={(text) => updateLocalField("date", text)}
+                  placeholder="Ngày (VD: 2025-09-14)"
+                  placeholderTextColor={colors.secondary}
+                  returnKeyType="next"
+                  onSubmitEditing={() => handleFocus(timeRef)}
+                  blurOnSubmit={false}
+                />
+
+                <TextInput
+                  ref={timeRef}
+                  style={styles.input}
+                  value={localEvent.time}
+                  onChangeText={(text) => updateLocalField("time", text)}
+                  placeholder="Thời gian (VD: 19:00)"
+                  placeholderTextColor={colors.secondary}
+                  returnKeyType="next"
+                  onSubmitEditing={() => handleFocus(locationRef)}
+                  blurOnSubmit={false}
+                />
+
+                <TextInput
+                  ref={locationRef}
+                  style={styles.input}
+                  value={localEvent.location}
+                  onChangeText={(text) => updateLocalField("location", text)}
+                  placeholder="Địa điểm"
+                  placeholderTextColor={colors.secondary}
+                  returnKeyType="next"
+                  onSubmitEditing={() => handleFocus(categoryRef)}
+                  blurOnSubmit={false}
+                />
+
+                <TextInput
+                  ref={categoryRef}
+                  style={styles.input}
+                  value={localEvent.category}
+                  onChangeText={(text) => updateLocalField("category", text)}
+                  placeholder="Danh mục (VD: Music, Sports)"
+                  placeholderTextColor={colors.secondary}
+                  returnKeyType="done"
+                  onSubmitEditing={() => Keyboard.dismiss()}
+                  blurOnSubmit={false}
+                />
+
+                <Text style={styles.sectionTitle}>Danh sách vé</Text>
+                {localEvent.tickets.map((ticket, index) => (
+                  <View key={index} style={styles.ticketContainer}>
+                    <Picker
+                      selectedValue={ticket.ticket_class}
+                      style={styles.input}
+                      onValueChange={(value) =>
+                        updateTicketField(index, "ticket_class", value)
+                      }
+                    >
+                      {ticketOptions.map((option) => (
+                        <Picker.Item
+                          key={option.value}
+                          label={option.label}
+                          value={option.value}
+                        />
+                      ))}
+                    </Picker>
+                    <TextInput
+                      style={styles.input}
+                      value={ticket.price}
+                      onChangeText={(text) =>
+                        updateTicketField(index, "price", text)
+                      }
+                      placeholder="Giá vé (VNĐ)"
+                      keyboardType="numeric"
+                      placeholderTextColor={colors.secondary}
+                    />
+                    <TextInput
+                      style={styles.input}
+                      value={ticket.quantity}
+                      onChangeText={(text) =>
+                        updateTicketField(index, "quantity", text)
+                      }
+                      placeholder="Số lượng"
+                      keyboardType="numeric"
+                      placeholderTextColor={colors.secondary}
+                    />
+                    <TouchableOpacity
+                      style={styles.removeButton}
+                      onPress={() => removeTicket(index)}
+                    >
+                      <Text style={styles.buttonText}>Xóa vé</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                <TouchableOpacity style={styles.addButton} onPress={addTicket}>
+                  <Text style={styles.buttonText}>Thêm vé</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.createButton}
+                  onPress={saveAndCreate}
+                >
+                  <Text style={styles.buttonText}>
+                    {isEditing ? "Cập nhật sự kiện" : "Tạo sự kiện"}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.createButton, { backgroundColor: colors.red }]}
+                  onPress={() => {
+                    setShowCreateForm(false);
+                    Keyboard.dismiss();
+                  }}
+                >
+                  <Text style={styles.buttonText}>Hủy</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     );
   }
@@ -226,10 +364,11 @@ const ManageEvents = () => {
     id: null,
     name: "",
     description: "",
+    date: "",
     time: "",
     location: "",
-    ticketPrice: "",
-    category: "Music", // Giá trị mặc định
+    tickets: [{ ticket_class: "normal", price: "", quantity: "" }],
+    category: "Music",
   });
   const [media, setMedia] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -238,9 +377,9 @@ const ManageEvents = () => {
 
   const nameRef = useRef(null);
   const descriptionRef = useRef(null);
+  const dateRef = useRef(null);
   const timeRef = useRef(null);
   const locationRef = useRef(null);
-  const ticketPriceRef = useRef(null);
   const categoryRef = useRef(null);
 
   useEffect(() => {
@@ -344,16 +483,17 @@ const ManageEvents = () => {
         : `https://mynameisgiao.pythonanywhere.com/events/manage/create/`;
       const method = eventData.id ? "PUT" : "POST";
 
-      // Log dữ liệu gửi lên để kiểm tra
-      console.log("Dữ liệu gửi lên API:", {
-        name: eventData.name,
-        description: eventData.description,
-        time: eventData.time,
-        location: eventData.location,
-        ticket_price: parseFloat(eventData.ticketPrice),
-        category: eventData.category,
+      const requestData = {
+        name: eventData.name.trim(),
+        description: eventData.description.trim(),
+        date: eventData.date.trim(),
+        time: eventData.time.trim(),
+        location: eventData.location.trim(),
+        tickets: eventData.tickets,
+        category: eventData.category.trim(),
         organizer: organizerId,
-      });
+      };
+      console.log("Dữ liệu gửi lên API:", JSON.stringify(requestData, null, 2));
 
       const response = await fetch(endpoint, {
         method,
@@ -361,21 +501,53 @@ const ManageEvents = () => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          name: eventData.name,
-          description: eventData.description,
-          time: eventData.time,
-          location: eventData.location,
-          ticket_price: parseFloat(eventData.ticketPrice),
-          category: eventData.category,
-          organizer: organizerId,
-        }),
+        body: JSON.stringify(requestData),
       });
 
       console.log("Event response status:", response.status);
+      const responseText = await response.text();
+      console.log("Raw response text:", responseText);
+
+      let data;
+      if (responseText) {
+        try {
+          data = JSON.parse(responseText);
+        } catch (jsonError) {
+          console.error("JSON Parse error:", jsonError);
+          if (response.status === 500) {
+            console.log(
+              "Dữ liệu có thể đã được lưu, tự động làm mới danh sách..."
+            );
+            Alert.alert(
+              "Cảnh báo",
+              "Có lỗi từ server (status 500), nhưng sự kiện có thể đã được tạo. Đang làm mới danh sách..."
+            );
+            await fetchEvents();
+            setNewEvent({
+              id: null,
+              name: "",
+              description: "",
+              date: "",
+              time: "",
+              location: "",
+              tickets: [{ ticket_class: "normal", price: "", quantity: "" }],
+              category: "Music",
+            });
+            setIsEditing(false);
+            setShowCreateForm(false);
+            return;
+          }
+          throw new Error(
+            "Server trả về dữ liệu không hợp lệ: " +
+              responseText.substring(0, 100)
+          );
+        }
+      } else {
+        throw new Error("Server không trả về dữ liệu.");
+      }
+
       if (!response.ok) {
-        const errorData = await response.json();
-        console.log("Error response data:", errorData);
+        console.log("Error response data:", data);
         if (response.status === 401) {
           Alert.alert(
             "Lỗi",
@@ -384,16 +556,43 @@ const ManageEvents = () => {
           await AsyncStorage.removeItem("access");
           return;
         }
-        throw new Error(
-          errorData.detail ||
-            Object.values(errorData)
-              .map((errors) => errors.join(", "))
-              .join(" ") ||
-            "Không thể tạo/cập nhật sự kiện."
-        );
+        let errorMessage = "Không thể tạo/cập nhật sự kiện.";
+        if (response.status === 500) {
+          errorMessage =
+            "Server gặp lỗi (status 500). Đang làm mới danh sách...";
+          Alert.alert(
+            "Cảnh báo",
+            "Có lỗi từ server, nhưng sự kiện có thể đã được tạo. Đang làm mới danh sách..."
+          );
+          await fetchEvents();
+          setNewEvent({
+            id: null,
+            name: "",
+            description: "",
+            date: "",
+            time: "",
+            location: "",
+            tickets: [{ ticket_class: "normal", price: "", quantity: "" }],
+            category: "Music",
+          });
+          setIsEditing(false);
+          setShowCreateForm(false);
+          return;
+        }
+        if (Array.isArray(data)) {
+          errorMessage = data.join(", ");
+        } else if (typeof data === "string") {
+          errorMessage = data;
+        } else if (data.detail) {
+          errorMessage = data.detail;
+        }
+        if (errorMessage === "Sự kiện đã tồn tại.") {
+          errorMessage =
+            "Sự kiện với tên, ngày và địa điểm này đã tồn tại. Vui lòng thay đổi thông tin.";
+        }
+        throw new Error(errorMessage);
       }
 
-      const data = await response.json();
       console.log("Event created/updated:", data);
       if (eventData.id) {
         setEvents(
@@ -410,9 +609,10 @@ const ManageEvents = () => {
         id: null,
         name: "",
         description: "",
+        date: "",
         time: "",
         location: "",
-        ticketPrice: "",
+        tickets: [{ ticket_class: "normal", price: "", quantity: "" }],
         category: "Music",
       });
       setIsEditing(false);
@@ -464,21 +664,35 @@ const ManageEvents = () => {
     try {
       const token = await AsyncStorage.getItem("access");
       const formData = new FormData();
+
+      let fileType;
+      if (mediaUri.endsWith(".jpg") || mediaUri.endsWith(".jpeg")) {
+        fileType = "image/jpeg";
+      } else if (mediaUri.endsWith(".png")) {
+        fileType = "image/png";
+      } else if (mediaUri.endsWith(".mp4")) {
+        fileType = "video/mp4";
+      } else if (mediaUri.endsWith(".mpeg")) {
+        fileType = "video/mpeg";
+      } else {
+        throw new Error(
+          "Định dạng file không được hỗ trợ. Chỉ hỗ trợ jpg, png, mp4, mpeg."
+        );
+      }
+
       formData.append("file", {
         uri: mediaUri,
-        type:
-          mediaUri.endsWith(".jpg") || mediaUri.endsWith(".jpeg")
-            ? "image/jpeg"
-            : "video/mp4",
+        type: fileType,
         name: `media_${Date.now()}${mediaUri.split(".").pop()}`,
       });
+
+      console.log("Dữ liệu formData gửi lên:", formData);
 
       const response = await fetch(
         `https://mynameisgiao.pythonanywhere.com/events/${eventId}/upload/`,
         {
           method: "POST",
           headers: {
-            "Content-Type": "multipart/form-data",
             Authorization: `Bearer ${token}`,
           },
           body: formData,
@@ -486,23 +700,60 @@ const ManageEvents = () => {
       );
 
       console.log("Upload media response status:", response.status);
+      const responseText = await response.text();
+      console.log("Raw upload response text:", responseText);
+
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorData;
+        try {
+          errorData = JSON.parse(responseText);
+        } catch (jsonError) {
+          console.error("JSON Parse error:", jsonError);
+          throw new Error(
+            "Server trả về dữ liệu không hợp lệ: " +
+              responseText.substring(0, 200)
+          );
+        }
+
         if (response.status === 401) {
           Alert.alert(
             "Lỗi",
-            "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại."
+            "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.",
+            [
+              {
+                text: "OK",
+                onPress: async () => await AsyncStorage.removeItem("access"),
+              },
+            ]
           );
-          await AsyncStorage.removeItem("access");
           return;
         }
-        throw new Error(errorData.detail || "Tải media thất bại.");
+
+        const errorMessage = errorData.error || "Tải media thất bại.";
+        const errorDetails = errorData.details
+          ? `\nChi tiết: ${errorData.details}`
+          : "";
+        throw new Error(`${errorMessage}${errorDetails}`);
       }
 
-      Alert.alert("Thành công", "Tải media thành công!");
+      const data = JSON.parse(responseText);
+      console.log("Upload media data:", data);
+      Alert.alert(
+        "Thành công",
+        "Tải media thành công! URL: " +
+          (data.media_urls ? data.media_urls[0] : ""),
+        [{ text: "OK" }]
+      );
     } catch (err) {
       console.error("Lỗi uploadMedia:", err);
-      Alert.alert("Lỗi", `Tải media thất bại: ${err.message}`);
+      Alert.alert(
+        "Lỗi tải media",
+        `Không thể tải media lên do lỗi server: ${err.message}\nBạn có muốn thử lại?`,
+        [
+          { text: "Hủy", style: "cancel" },
+          { text: "Thử lại", onPress: () => uploadMedia(eventId, mediaUri) }, // Gọi lại hàm uploadMedia
+        ]
+      );
     }
   };
 
@@ -520,7 +771,17 @@ const ManageEvents = () => {
         )}
         <Text style={styles.eventName}>{item.name}</Text>
         <Text style={styles.eventDetail}>{item.description}</Text>
-        <Text style={styles.eventDetail}>{item.date}</Text>
+        <Text style={styles.eventDetail}>
+          {item.date
+            ? (() => {
+                const [date, time] = item.date.split("T");
+                // Lấy giờ và phút từ time (bỏ giây và Z)
+                const hourMinute = time ? time.substring(0, 5) : "";
+                return `${date} - ${hourMinute}`;
+              })()
+            : "N/A"}
+        </Text>
+        {/* Hiển thị ngày và giờ từ date ISO */}
         <Text style={styles.eventDetail}>{item.location}</Text>
         <Text style={styles.eventDetail}>
           Giá vé: {item.min_price?.toLocaleString() || "N/A"} VNĐ -{" "}
@@ -554,9 +815,14 @@ const ManageEvents = () => {
       id: event.id,
       name: event.name,
       description: event.description,
+      date: event.date || "",
       time: event.time || "",
       location: event.location || "",
-      ticketPrice: event.ticket_price || "",
+      tickets: event.tickets.map((t) => ({
+        ticket_class: t.ticket_class || "normal",
+        price: t.price?.toString() || "",
+        quantity: t.quantity?.toString() || "",
+      })) || [{ ticket_class: "normal", price: "", quantity: "" }],
       category: event.category || "Music",
     });
     setIsEditing(true);
@@ -631,9 +897,10 @@ const ManageEvents = () => {
               id: null,
               name: "",
               description: "",
+              date: "",
               time: "",
               location: "",
-              ticketPrice: "",
+              tickets: [{ ticket_class: "normal", price: "", quantity: "" }],
               category: "Music",
             });
             Keyboard.dismiss();
@@ -651,9 +918,9 @@ const ManageEvents = () => {
         setShowCreateForm={setShowCreateForm}
         nameRef={nameRef}
         descriptionRef={descriptionRef}
+        dateRef={dateRef}
         timeRef={timeRef}
         locationRef={locationRef}
-        ticketPriceRef={ticketPriceRef}
         categoryRef={categoryRef}
       />
     </>
@@ -687,7 +954,7 @@ const ManageEvents = () => {
   );
 };
 
-// Giữ nguyên styles không thay đổi
+// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -810,6 +1077,35 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 16,
     color: colors.gray,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: colors.white,
+    marginTop: 15,
+    marginBottom: 10,
+  },
+  ticketContainer: {
+    marginBottom: 10,
+  },
+  addButton: {
+    backgroundColor: colors.green,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  removeButton: {
+    backgroundColor: colors.red,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 5,
+    alignItems: "center",
+    marginTop: 5,
+  },
+  ticketsList: {
+    marginTop: 10,
   },
 });
 
