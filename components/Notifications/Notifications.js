@@ -19,7 +19,7 @@ const Notifications = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Gọi API lấy danh sách thông báo
+  // Lấy danh sách thông báo từ server
   useEffect(() => {
     const fetchNotifications = async () => {
       try {
@@ -35,7 +35,7 @@ const Notifications = () => {
     if (token) fetchNotifications();
   }, [token]);
 
-  // Đánh dấu đã đọc
+  // Đánh dấu là đã đọc
   const markAsRead = async (id) => {
     try {
       await authApi(token).post(`${endpoints.notifications}${id}/mark-read/`);
@@ -89,6 +89,7 @@ const Notifications = () => {
         ListEmptyComponent={
           <Text style={styles.empty}>Không có thông báo nào.</Text>
         }
+        contentContainerStyle={{ paddingBottom: 20 }}
       />
     </View>
   );
