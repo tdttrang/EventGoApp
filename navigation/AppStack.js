@@ -10,7 +10,8 @@ import Home from "../components/Home/Home";
 import Tickets from "../components/Tickets/Tickets";
 import Reviews from "../components/Event/ReviewsNReply";
 import ManageEvents from "../components/Event/ManageEvents";
-import Notifications from "../components/Notifications/Notifications"; 
+import Notifications from "../components/Notifications/Notifications";
+import useUpcomingEventsNotifier from "../components/Notifications/useUpcomingEventsNotifier";
 
 
 const Stack = createNativeStackNavigator();
@@ -28,6 +29,8 @@ const AppStack = () => (
     <Stack.Screen name="Reviews" component={Reviews} />
     <Stack.Screen name="ManageEvents" component={ManageEvents} />
     <Stack.Screen name="Notifications" component={Notifications} />
+    <Stack.Screen name="UpcomingEventsNotifier" component={useUpcomingEventsNotifier} />
+
   </Stack.Navigator>
 );
 
