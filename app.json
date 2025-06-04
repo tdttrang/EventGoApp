@@ -21,14 +21,31 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.eventgoapp1"
+      "package": "com.anonymous.eventgoapp1",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
+    "notifications": [
+      {
+        "android": {
+          "useNextNotificationsApi": true
+        }
+      }
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-video",
       "expo-audio"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "624fbfb9-6556-4093-8748-843ca9a7ecde"
+      }
+    }
   }
 }

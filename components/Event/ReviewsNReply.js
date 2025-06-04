@@ -5,13 +5,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  ScrollView, 
+  ScrollView,
   Alert,
   ActivityIndicator,
   SafeAreaView,
   StatusBar,
-  FlatList, 
-  Image, 
+  FlatList,
+  Image,
   Platform,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
@@ -19,10 +19,9 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { colors } from "../../utils/colors";
 import { fonts } from "../../utils/fonts";
-import { authApi, endpoints } from "../../configs/Apis"; 
-import { MyUserContext } from "../../configs/MyContexts"; 
+import { authApi, endpoints } from "../../configs/Apis";
+import { MyUserContext } from "../../configs/MyContexts";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
 
 const StarRating = ({ rating, setRating, maxStars = 5, size = 30 }) => {
   return (
@@ -46,133 +45,179 @@ const StarRating = ({ rating, setRating, maxStars = 5, size = 30 }) => {
 
 const Reviews = () => {
   const insets = useSafeAreaInsets();
-
   const navigation = useNavigation();
   const route = useRoute();
   const { eventId } = route.params;
-
   const { loggedInUser } = useContext(MyUserContext);
 
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submittingReview, setSubmittingReview] = useState(false);
   const [submittingReply, setSubmittingReply] = useState(false);
-
   const [newReviewRating, setNewReviewRating] = useState(0);
   const [newReviewComment, setNewReviewComment] = useState("");
-
   const [replyingToReviewId, setReplyingToReviewId] = useState(null);
   const [newReplyComment, setNewReplyComment] = useState("");
 
   useEffect(() => {
+    if (!eventId || isNaN(eventId)) {
+      Alert.alert("Lỗi", "Sự kiện không hợp lệ. Vui lòng thử lại.");
+      navigation.goBack();
+      return;
+    }
     fetchEventReviews();
   }, [eventId]);
 
   const fetchEventReviews = async () => {
-  setLoading(true);
-  try {
-    const token = await AsyncStorage.getItem("access");
-    const api = authApi(token);
+    setLoading(true);
+    try {
+      const token = await AsyncStorage.getItem("access");
+      if (!token) {
+        throw new Error("Không tìm thấy token. Vui lòng đăng nhập lại.");
+      }
+      const api = authApi(token);
+      const res = await api.get(endpoints["event-review-list"](eventId));
+      console.log("DEBUG - Dữ liệu thô từ API (event-review-list):", res.data);
 
-    const res = await api.get(endpoints["event-review-list"](eventId));
-    const reviewsData = res.data;
+      let reviewsData = res.data;
+      if (
+        reviewsData &&
+        typeof reviewsData === "object" &&
+        "results" in reviewsData
+      ) {
+        reviewsData = reviewsData.results;
+      } else if (!Array.isArray(reviewsData)) {
+        console.warn("Dữ liệu không phải mảng:", reviewsData);
+        reviewsData = [];
+      }
 
-    const transformedReviews = await Promise.all(
-      reviewsData.map(async (review) => {
-        let replies = [];
-        try {
-          const replyRes = await api.get(endpoints["review-reply-list"](review.id));
-          replies = replyRes.data;
-        } catch (err) {
-          console.warn(`Không thể lấy phản hồi cho review ID ${review.id}:`, err.message);
-        }
+      const transformedReviews = await Promise.all(
+        reviewsData.map(async (review) => {
+          let replies = [];
+          try {
+            const replyRes = await api.get(
+              endpoints["review-reply-list"](review.id)
+            );
+            replies = replyRes.data;
+            if (
+              replies &&
+              typeof replies === "object" &&
+              "results" in replies
+            ) {
+              replies = replies.results; // Xử lý phân trang cho phản hồi
+            }
+          } catch (err) {
+            console.warn(
+              `Không thể lấy phản hồi cho review ID ${review.id}:`,
+              err.message
+            );
+          }
 
-        return {
-          id: review.id,
-          content: review.comment,
-          rate: review.rating,
-          created_date: review.created_at,
-          user_info: {
-            id: review.user,
-            username: `Người dùng ${review.user}`,
-            avatar: null,
-          },
-          replies: replies,
-        };
-      })
-    );
+          return {
+            id: review.id,
+            content: review.comment,
+            rate: review.rating,
+            created_date: review.created_at,
+            user_info: {
+              id: review.user,
+              username: `Người dùng ${review.user}`,
+              avatar: null,
+            },
+            replies: Array.isArray(replies) ? replies : [],
+          };
+        })
+      );
 
-    setReviews(transformedReviews);
-    console.log("✅ Đánh giá có phản hồi:", transformedReviews);
-  } catch (error) {
-    console.error("❌ Lỗi khi tải đánh giá:", error.response?.data || error.message);
-    Alert.alert("Lỗi", "Không thể tải đánh giá. Vui lòng thử lại.");
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-
+      setReviews(transformedReviews);
+      console.log("✅ Đánh giá có phản hồi:", transformedReviews);
+    } catch (error) {
+      console.error(
+        "❌ Lỗi khi tải đánh giá:",
+        error.response?.data || error.message
+      );
+      let errorMessage = "Không thể tải đánh giá. Vui lòng thử lại.";
+      if (error.response && error.response.status === 500) {
+        errorMessage =
+          "Lỗi server (500). Vui lòng kiểm tra sự kiện hoặc liên hệ quản trị viên.";
+      }
+      Alert.alert("Lỗi", errorMessage);
+      setReviews([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const submitReview = async () => {
-    // 1. Kiểm tra đầu vào phía client trước khi gửi
     if (newReviewRating === 0 || !newReviewComment.trim()) {
       Alert.alert("Lỗi", "Vui lòng chọn số sao và nhập bình luận.");
       return;
     }
 
-    // --- DEBUGGING BƯỚC 1: LOG GIÁ TRỊ TRƯỚC KHI GỬI ---
     console.log("DEBUG - Gửi đánh giá với:");
     console.log("  eventId:", eventId);
     console.log("  rating:", newReviewRating);
     console.log("  comment:", newReviewComment.trim());
-    // --- KẾT THÚC DEBUGGING BƯỚC 1 ---
+    const payload = {
+      event: eventId,
+      rating: newReviewRating,
+      comment: newReviewComment.trim(),
+    };
+    console.log("DEBUG - Payload gửi lên server:", payload);
 
-    setSubmittingReview(true); // Bắt đầu trạng thái gửi
-
+    setSubmittingReview(true);
     try {
       const token = await AsyncStorage.getItem("access");
-      const api = authApi(token); // Sử dụng authApi đã cấu hình
+      if (!token) {
+        throw new Error("Không tìm thấy token. Vui lòng đăng nhập lại.");
+      }
+      console.log("DEBUG - Token:", token);
+      const api = authApi(token);
+      const res = await api.post(
+        endpoints["create-event-review"](eventId),
+        payload
+      );
 
-      const res = await api.post(endpoints["create-event-review"](eventId), {
-        // 2. Đảm bảo tên trường khớp với backend API của bạn
-        // Backend yêu cầu 'event' và 'rating' (đúng như lỗi báo)
-        event: eventId,           // Gửi eventId từ route.params
-        rating: newReviewRating,  // Gửi số sao đã chọn
-        comment: newReviewComment.trim(), // Gửi nội dung bình luận
-      });
-
-      // 3. Xử lý phản hồi từ server
-      if (res.status === 201) { // Mã 201 Created là thành công
+      console.log("DEBUG - Response từ server:", res.data);
+      if (res.status === 201) {
         Alert.alert("Thành công", "Đánh giá của bạn đã được gửi.");
-        // Reset form
         setNewReviewRating(0);
         setNewReviewComment("");
-        fetchEventReviews(); // Tải lại danh sách đánh giá để thấy đánh giá mới
+        fetchEventReviews();
       } else {
-        // Xử lý các lỗi khác từ server (nếu status code không phải 201)
         console.error("Lỗi khi gửi đánh giá (phản hồi server):", res.data);
-        const errorMessage = res.data?.detail || res.data?.message || "Không thể gửi đánh giá.";
+        const errorMessage =
+          res.data?.detail || res.data?.message || "Không thể gửi đánh giá.";
         Alert.alert("Lỗi", errorMessage);
       }
     } catch (error) {
-      // 4. Xử lý lỗi network hoặc lỗi trả về từ server (4xx, 5xx)
-      console.error("Lỗi khi gửi đánh giá (catch block):", error.response?.data || error.message);
-      // Hiển thị thông báo lỗi cụ thể từ server nếu có
-      let errorMessage = "Đã xảy ra lỗi khi gửi đánh giá.";
-      if (error.response && error.response.data) {
+      console.error(
+        "Lỗi khi gửi đánh giá (catch block):",
+        error.response?.data || error.message || error.toString()
+      );
+      let errorMessage =
+        "Đã xảy ra lỗi khi gửi đánh giá. Vui lòng thử lại sau.";
+      if (error.response) {
+        if (error.response.status === 401) {
+          errorMessage = "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.";
+        } else if (error.response.status === 500) {
+          errorMessage =
+            "Lỗi server (500). Vui lòng kiểm tra sự kiện hoặc liên hệ quản trị viên.";
+        } else if (error.response.data) {
           if (error.response.data.event && error.response.data.event[0]) {
-              errorMessage = `Sự kiện: ${error.response.data.event[0]}`;
-          } else if (error.response.data.rating && error.response.data.rating[0]) {
-              errorMessage = `Đánh giá (số sao): ${error.response.data.rating[0]}`;
-          } else if (error.response.data.detail) { // Lỗi chung từ Django REST Framework
-              errorMessage = error.response.data.detail;
+            errorMessage = `Sự kiện: ${error.response.data.event[0]}`;
+          } else if (
+            error.response.data.rating &&
+            error.response.data.rating[0]
+          ) {
+            errorMessage = `Đánh giá (số sao): ${error.response.data.rating[0]}`;
+          } else if (error.response.data.detail) {
+            errorMessage = error.response.data.detail;
           }
+        }
       }
       Alert.alert("Lỗi", errorMessage);
     } finally {
-      setSubmittingReview(false); // Kết thúc trạng thái gửi
+      setSubmittingReview(false);
     }
   };
 
@@ -182,28 +227,57 @@ const Reviews = () => {
       return;
     }
     if (!loggedInUser) {
-        Alert.alert("Lỗi", "Bạn cần đăng nhập để phản hồi.");
-        navigation.navigate("AuthStack", { screen: "Login" });
-        return;
+      Alert.alert("Lỗi", "Bạn cần đăng nhập để phản hồi.");
+      navigation.navigate("AuthStack", { screen: "Login" });
+      return;
     }
 
     setSubmittingReply(true);
     try {
       const token = await AsyncStorage.getItem("access");
+      if (!token) {
+        throw new Error("Không tìm thấy token. Vui lòng đăng nhập lại.");
+      }
       const api = authApi(token);
+
+      const userResponse = await api.get(endpoints["currentUser"]);
+      console.log("DEBUG - Dữ liệu người dùng hiện tại:", userResponse.data); // Thêm dòng này
+      const userRole = userResponse.data.role;
+      if (userRole !== "organizer") {
+        Alert.alert("Lỗi", "Chỉ nhà tổ chức mới được phép phản hồi.");
+        return;
+      }
+
       const data = {
         reply_text: newReplyComment,
         review: reviewId,
-        };
-        await api.post(endpoints["create-review-reply"](reviewId), data);
+      };
+      const replyResponse = await api.post(
+        endpoints["create-review-reply"](reviewId),
+        data
+      );
 
       Alert.alert("Thành công", "Phản hồi của bạn đã được gửi!");
       setNewReplyComment("");
       setReplyingToReviewId(null);
       fetchEventReviews();
     } catch (error) {
-      console.error("Lỗi khi gửi phản hồi:", error.response?.data || error.message);
-      Alert.alert("Lỗi", `Không thể gửi phản hồi. Chi tiết: ${error.response?.data?.detail || error.message}`);
+      console.error(
+        "Lỗi khi gửi phản hồi:",
+        error.response?.data || error.message
+      );
+      let errorMessage = "Không thể gửi phản hồi.";
+      if (error.response) {
+        if (error.response.status === 401) {
+          errorMessage = "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.";
+        } else if (error.response.status === 500) {
+          errorMessage =
+            "Lỗi server (500). Vui lòng kiểm tra hoặc liên hệ quản trị viên.";
+        } else if (error.response.data && error.response.data.detail) {
+          errorMessage = error.response.data.detail;
+        }
+      }
+      Alert.alert("Lỗi", errorMessage);
     } finally {
       setSubmittingReply(false);
     }
@@ -213,49 +287,84 @@ const Reviews = () => {
     <View style={styles.reviewCard}>
       <View style={styles.reviewHeader}>
         {item.user_info?.avatar ? (
-          <Image source={{ uri: item.user_info.avatar }} style={styles.reviewAvatar} />
+          <Image
+            source={{ uri: item.user_info.avatar }}
+            style={styles.reviewAvatar}
+          />
         ) : (
-          <Ionicons name="person-circle-outline" size={40} color={colors.primary} />
+          <Ionicons
+            name="person-circle-outline"
+            size={40}
+            color={colors.primary}
+          />
         )}
         <View style={styles.reviewUserContent}>
-          <Text style={styles.reviewUsername}>{item.user_info?.username || "Ẩn danh"}</Text>
-          <StarRating rating={item.rate} setRating={() => {}} size={18} /> {/* Disable setRating for display */}
+          <Text style={styles.reviewUsername}>
+            {item.user_info?.username || "Ẩn danh"}
+          </Text>
+          <StarRating rating={item.rate} setRating={() => {}} size={18} />
         </View>
       </View>
       <Text style={styles.reviewComment}>{item.content}</Text>
-      <Text style={styles.reviewDate}>{new Date(item.created_date).toLocaleDateString()} lúc {new Date(item.created_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</Text>
+      <Text style={styles.reviewDate}>
+        {new Date(item.created_date).toLocaleDateString()} lúc{" "}
+        {new Date(item.created_date).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
+      </Text>
 
-      {/* Replies Section */}
       {item.replies && item.replies.length > 0 && (
         <View style={styles.repliesSection}>
-          <Text style={styles.repliesHeader}>Phản hồi ({item.replies.length})</Text>
+          <Text style={styles.repliesHeader}>
+            Phản hồi ({item.replies.length})
+          </Text>
           {item.replies.map((reply) => (
             <View key={reply.id} style={styles.replyItem}>
               {reply.user_info?.avatar ? (
-                <Image source={{ uri: reply.user_info.avatar }} style={styles.replyAvatar} />
+                <Image
+                  source={{ uri: reply.user_info.avatar }}
+                  style={styles.replyAvatar}
+                />
               ) : (
-                <Ionicons name="chatbubble-ellipses-outline" size={20} color={colors.secondary} />
+                <Ionicons
+                  name="chatbubble-ellipses-outline"
+                  size={20}
+                  color={colors.secondary}
+                />
               )}
               <View style={styles.replyContent}>
-                <Text style={styles.replyUsername}>{reply.user_info?.username || "Ẩn danh"}</Text>
+                <Text style={styles.replyUsername}>
+                  {reply.user_info?.username || "Ẩn danh"}
+                </Text>
                 <Text style={styles.replyText}>{reply.reply_text}</Text>
                 <Text style={styles.replyDate}>
-                    {new Date(reply.created_date).toLocaleDateString()} lúc{" "}
-                    {new Date(reply.created_date).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  {new Date(reply.created_date).toLocaleDateString()} lúc{" "}
+                  {new Date(reply.created_date).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </Text>
-                </View>
+              </View>
             </View>
           ))}
         </View>
       )}
 
-      {/* Reply Button and Form */}
       {loggedInUser && (
         <TouchableOpacity
           style={styles.toggleReplyButton}
-          onPress={() => setReplyingToReviewId(replyingToReviewId === item.id ? null : item.id)}
+          onPress={() =>
+            setReplyingToReviewId(
+              replyingToReviewId === item.id ? null : item.id
+            )
+          }
         >
-          <Ionicons name="arrow-undo-outline" size={20} color={colors.primary} />
+          <Ionicons
+            name="arrow-undo-outline"
+            size={20}
+            color={colors.primary}
+          />
           <Text style={styles.toggleReplyButtonText}>
             {replyingToReviewId === item.id ? "Hủy phản hồi" : "Phản hồi"}
           </Text>
@@ -298,7 +407,7 @@ const Reviews = () => {
         ]}
       >
         <TouchableOpacity
-          style={[styles.headerBackButton, { paddingTop: insets.top }]} // Thêm dòng này
+          style={[styles.headerBackButton, { paddingTop: insets.top }]}
           onPress={() => navigation.goBack()}
         >
           <Ionicons name="arrow-back-outline" size={26} color={colors.white} />
@@ -306,7 +415,6 @@ const Reviews = () => {
         <Text style={styles.headerTitle}>Đánh giá & Bình luận</Text>
       </View>
 
-      {/* Đặt form nhập đánh giá ở đây, ngoài FlatList */}
       {loggedInUser ? (
         <View style={styles.reviewFormCard}>
           <Text style={styles.cardSectionTitle}>Gửi đánh giá của bạn</Text>
@@ -376,7 +484,7 @@ const Reviews = () => {
       )}
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -466,7 +574,6 @@ const styles = StyleSheet.create({
     }),
   },
   cardSectionTitle: {
-    // Tên mới cho tiêu đề form đánh giá
     fontSize: 18,
     color: colors.white,
     fontFamily: fonts.SemiBold,
@@ -475,11 +582,11 @@ const styles = StyleSheet.create({
   },
   reviewInput: {
     backgroundColor: colors.base,
-    borderRadius: 10, 
+    borderRadius: 10,
     paddingHorizontal: 15,
     paddingVertical: 12,
     marginBottom: 15,
-    minHeight: 100, 
+    minHeight: 100,
     textAlignVertical: "top",
     color: colors.white,
     fontFamily: fonts.Regular,
@@ -488,16 +595,15 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: colors.green,
-    paddingVertical: 14, 
-    borderRadius: 10, 
+    paddingVertical: 14,
+    borderRadius: 10,
     alignItems: "center",
   },
   submitButtonText: {
     color: colors.white,
     fontFamily: fonts.Bold,
-    fontSize: 17, 
+    fontSize: 17,
   },
-  // Login Prompt Card
   loginPromptCard: {
     backgroundColor: colors.card,
     borderRadius: 15,
@@ -537,7 +643,7 @@ const styles = StyleSheet.create({
   reviewCard: {
     backgroundColor: colors.card,
     borderRadius: 15,
-    padding: 18, // Tăng padding
+    padding: 18,
     marginBottom: 15,
     ...Platform.select({
       ios: {
@@ -590,7 +696,6 @@ const styles = StyleSheet.create({
     paddingTop: 5,
     marginTop: 5,
   },
-  // Replies Section
   repliesSection: {
     marginTop: 15,
     paddingTop: 15,
@@ -606,15 +711,14 @@ const styles = StyleSheet.create({
   replyItem: {
     flexDirection: "row",
     alignItems: "flex-start",
-    backgroundColor: colors.base, // Nền phản hồi con
+    backgroundColor: colors.base,
     borderRadius: 10,
     padding: 10,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: colors.gray, // Thêm viền nhẹ
+    borderColor: colors.gray,
   },
   replyAvatar: {
-    // Style cho avatar người phản hồi
     width: 30,
     height: 30,
     borderRadius: 15,
@@ -644,7 +748,6 @@ const styles = StyleSheet.create({
     textAlign: "right",
     marginTop: 5,
   },
-  // Toggle Reply Button
   toggleReplyButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -659,7 +762,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.SemiBold,
     color: colors.primary,
   },
-  // Reply Form
   replyFormContainer: {
     marginTop: 10,
     paddingTop: 10,

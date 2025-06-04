@@ -1,0 +1,37 @@
+# Ignore node_modules (reinstalled in cloud anyway)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Git
+.git/
+.gitignore
+
+# IDEs & OS
+.vscode/
+.DS_Store
+*.swp
+*.lock
+
+# Android / iOS build folders
+android/.gradle/
+android/.idea/
+android/build/
+android/app/build/
+ios/Pods/
+ios/build/
+
+# Expo Go caches
+.expo/
+.expo-shared/
+
+# Media files (optional – only ignore if not used for testing)
+assets/video/
+assets/images/tmp/
+assets/dummy/
+
+# Others
+*.apk
+*.keystore
+*.tar.gz
+*.zip
