@@ -44,7 +44,7 @@ const AdminDashboard = () => {
       }
 
       const response = await fetch(
-        "https://mynameisgiao.pythonanywhere.com/admin/users/",
+        "https://mynameisgiao.pythonanywhere.com/api/admin/users/",
         {
           method: "GET",
           headers: {
@@ -66,7 +66,8 @@ const AdminDashboard = () => {
       }
 
       const data = await response.json();
-      setUsers(data);
+      console.log("Users fetched:", data);
+      setUsers(data.results);
       setLoading(false);
     } catch (err) {
       console.error("Lỗi fetchUsers:", err);
@@ -82,21 +83,26 @@ const AdminDashboard = () => {
     try {
       const token = await AsyncStorage.getItem("access");
       const response = await fetch(
-        `https://mynameisgiao.pythonanywhere.com/admin/users/${userId}/approve/`,
+        `https://mynameisgiao.pythonanywhere.com/api/admin/users/${userId}/approve/`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-        }
+        }        
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        Alert.alert("Lỗi", errorData.error || "Không thể duyệt nhà tổ chức.");
+        const errorText = await response.text(); // 👈 thêm dòng này thay vì .json()
+        console.error("Approve error raw:", errorText);
+        Alert.alert(
+          "Lỗi",
+          "Không thể duyệt nhà tổ chức.\n" + errorText.substring(0, 200)
+        );
         return;
       }
+      
 
       const data = await response.json();
       Alert.alert("Thành công", data.message);
@@ -123,7 +129,7 @@ const AdminDashboard = () => {
             try {
               const token = await AsyncStorage.getItem("access");
               const response = await fetch(
-                `https://mynameisgiao.pythonanywhere.com/admin/users/${userId}/`,
+                `https://mynameisgiao.pythonanywhere.com/api/admin/users/${userId}/`,
                 {
                   method: "DELETE",
                   headers: {
