@@ -22,7 +22,7 @@ const AppNavigator = () => {
         const token = await AsyncStorage.getItem("access");
         if (token) {
           const res = await authApi(token).get(endpoints.currentUser);
-          setLoggedInUser({
+          setLoggedInUser({ 
             token,
             ...res.data,
           });

@@ -25,8 +25,8 @@ const AdminDashboard = () => {
   const navigation = useNavigation();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const insets = useSafeAreaInsets(); // Thêm dòng này
-  const { setLoggedInUser } = useContext(MyUserContext); // Giả sử bạn đã tạo context này
+  const insets = useSafeAreaInsets(); 
+  const { setLoggedInUser } = useContext(MyUserContext); 
 
 
   useEffect(() => {
@@ -43,24 +43,24 @@ const AdminDashboard = () => {
         return;
       }
 
-      const response = await fetch("https://mynameisgiao.pythonanywhere.com/admin/events/user/", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(
+        "https://mynameisgiao.pythonanywhere.com/admin/users/",
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (!response.ok) {
-        if (response.status === 401) {
-          Alert.alert("Lỗi", "Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
-          await AsyncStorage.removeItem("access");
-          navigation.navigate("Login");
-        } else {
-          const errorText = await response.text();
-          console.error("API error:", errorText);
-          Alert.alert("Lỗi", errorText || "Không thể tải danh sách user.");
-        }
+        const errorText = await response.text();
+        console.error("API error (raw):", errorText); // Log nội dung HTML trả về
+        Alert.alert(
+          "Lỗi",
+          "Không thể tải danh sách user.\n" + errorText.substring(0, 200)
+        );
         setLoading(false);
         return;
       }
@@ -70,7 +70,10 @@ const AdminDashboard = () => {
       setLoading(false);
     } catch (err) {
       console.error("Lỗi fetchUsers:", err);
-      Alert.alert("Lỗi", "Không thể tải danh sách user. Vui lòng kiểm tra kết nối.");
+      Alert.alert(
+        "Lỗi",
+        "Không thể tải danh sách user. Vui lòng kiểm tra kết nối."
+      );
       setLoading(false);
     }
   };

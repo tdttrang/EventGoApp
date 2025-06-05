@@ -18,11 +18,11 @@ import { useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import * as ImagePicker from "expo-image-picker";
-import { colors } from "../../utils/colors";
+import { colors } from "../../utils/colors"; 
 import { fonts } from "../../utils/fonts";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MyUserContext } from "../../configs/MyContexts";
-import axios from "axios"; // Import axios
+
 
 const Profile = () => {
   const navigation = useNavigation();
@@ -39,7 +39,7 @@ const Profile = () => {
     fetchProfile();
   }, []);
 
-  const insets = useSafeAreaInsets();
+  const insets = useSafeAreaInsets(); 
 
   const fetchProfile = async () => {
     try {
@@ -72,6 +72,7 @@ const Profile = () => {
       }
 
       const data = await response.json();
+      console.log("Profile data:", data);
       setUser(data);
       setUsername(data.username);
       setAvatar(data.avatar || "https://via.placeholder.com/150");
@@ -85,6 +86,7 @@ const Profile = () => {
 
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    console.log("Permission status:", status);
     if (status !== "granted") {
       Alert.alert(
         "Quyền truy cập bị từ chối",
@@ -120,6 +122,7 @@ const Profile = () => {
     if (!hasPermission) return;
 
     try {
+      console.log("Launching image library...");
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -127,10 +130,12 @@ const Profile = () => {
         quality: 0.8,
       });
 
+      console.log("ImagePicker result:", result);
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setAvatar(result.assets[0].uri);
         uploadAvatar(result.assets[0].uri);
       } else {
+        console.log("Image selection canceled or no assets returned:", result);
         Alert.alert("Lỗi", "Không thể chọn ảnh. Vui lòng thử lại.");
       }
     } catch (err) {
@@ -150,27 +155,29 @@ const Profile = () => {
         name: `avatar_${Date.now()}.jpg`,
       });
 
-      const response = await axios.put(
-        "https://mynameisgiao.pythonanywhere.com/current-user/profile/avatar/",
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "multipart/form-data",
-          },
-        }
-      );
+      const response = await fetch("https://mynameisgiao.pythonanywhere.com/current-user/profile/avatar/", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
 
-      if (response.status === 200) {
-        setAvatar(response.data.avatar_url);
-        setUser((prev) => ({ ...prev, avatar: response.data.avatar_url }));
-        Alert.alert("Thành công", "Cập nhật ảnh đại diện thành công!");
-      } else {
-        Alert.alert("Lỗi", "Không thể tải ảnh lên.");
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.log("Upload error:", errorData);
+        Alert.alert("Lỗi", `${errorData.error || "Không thể tải ảnh lên."} Chi tiết: ${errorData.details || "Kết nối bị từ chối."}`);
+        return;
       }
+
+      const data = await response.json();
+      setAvatar(data.avatar_url);
+      setUser(prev => ({ ...prev, avatar: data.avatar_url }));
+
+      Alert.alert("Thành công", "Cập nhật ảnh đại diện thành công!");
     } catch (err) {
       console.error("Lỗi uploadAvatar:", err);
-      Alert.alert("Lỗi", "Không thể tải ảnh lên. Chi tiết: " + err.message);
+      Alert.alert("Lỗi", `Không thể tải ảnh lên. Chi tiết: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -253,10 +260,11 @@ const Profile = () => {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={colors.green} />
       <View style={[styles.header, { paddingTop: insets.top, height: 60 + insets.top }]}>
-        <Text style={styles.headerTitle}>Tài khoản</Text>
+        <Text style={styles.headerTitle}>Tài khoản</Text>      
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollViewContent}>
+        {/* Profile Info Card */}
         <View style={styles.profileInfoCard}>
           <TouchableOpacity style={styles.avatarContainer} onPress={pickImage}>
             <Image
@@ -280,7 +288,7 @@ const Profile = () => {
             "person-outline",
             "Thông tin tài khoản",
             () => setEditing(true),
-            !editing
+            !editing // Show arrow only if not editing
           )}
           {editing && (
             <View style={styles.editForm}>
@@ -289,7 +297,7 @@ const Profile = () => {
                 value={username}
                 onChangeText={setUsername}
                 placeholder="Tên người dùng"
-                placeholderTextColor={colors.secondary}
+                placeholderTextColor={colors.secondary} // Dùng secondary cho placeholder
               />
               <TextInput
                 style={styles.input}
@@ -315,9 +323,42 @@ const Profile = () => {
               </TouchableOpacity>
             </View>
           )}
+
+          {renderSectionItem(
+            "key-outline",
+            "Thiết lập mã PIN",
+            () => Alert.alert("Chức năng chưa có", "Chức năng thiết lập mã PIN đang được phát triển."),
+            true
+          )}
         </View>
 
-        {/* Logout Button */}
+        {/* App Settings Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Cài đặt ứng dụng</Text>
+          {renderSectionItem(            
+            "language-outline",
+            "Thay đổi ngôn ngữ",
+            () => Alert.alert("Chức năng chưa có", "Chức năng thay đổi ngôn ngữ đang được phát triển."),
+            true,
+            <View style={styles.languageIndicator}>
+              <Text style={styles.languageText}>Vie</Text>
+              <Ionicons name="star" size={16} color={colors.green} /> 
+            </View>
+          )}
+        </View>
+
+        {/* Help Center Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Trung tâm trợ giúp</Text>
+          {renderSectionItem(
+            "help-circle-outline",
+            "Trung tâm trợ giúp",
+            () => Linking.openURL("https://your-help-center-link.com"), // Thay thế bằng link trung tâm trợ giúp của bạn
+            true
+          )}
+        </View>
+
+        {/* Logout Button (as a separate card-like item) */}
         <View style={styles.card}>
           {renderSectionItem(
             "log-out-outline",
@@ -326,11 +367,10 @@ const Profile = () => {
             true
           )}
         </View>
-      </ScrollView>
+      </ScrollView>      
     </SafeAreaView>
   );
 };
-
 
 const styles = StyleSheet.create({
   container: {

@@ -15,6 +15,7 @@ export const endpoints = {
   // Endpoint cho thông báo
   "create-notification": "/notifications/create/",
   "list-notifications": "/notifications/",
+  "mark-read": (id) => `/notifications/${id}/read/`,
 };
 
 export const authApi = (accessToken) =>

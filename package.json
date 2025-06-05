@@ -23,6 +23,7 @@
     "expo-audio": "~0.4.5",
     "expo-av": "~15.1.4",
     "expo-dev-client": "~5.1.8",
+    "expo-device": "~7.1.4",
     "expo-image-picker": "~16.1.4",
     "expo-notifications": "~0.31.2",
     "expo-status-bar": "~2.2.3",
@@ -33,6 +34,7 @@
     "react": "19.0.0",
     "react-dom": "19.0.0",
     "react-native": "0.79.2",
+    "react-native-chart-kit": "^6.12.0",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-lazyload": "^1.1.0",
     "react-native-paper": "^5.14.1",
@@ -47,8 +49,7 @@
     "react-native-vector-icons": "^10.2.0",
     "react-native-video": "^6.14.0",
     "react-native-web": "^0.20.0",
-    "react-navigation": "^4.4.4",
-    "expo-device": "~7.1.4"
+    "react-navigation": "^4.4.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
