@@ -331,8 +331,189 @@ const Profile = () => {
   );
 };
 
+
 const styles = StyleSheet.create({
-  // Add all styles from your original code here...
+  container: {
+    flex: 1,
+    backgroundColor: colors.base, // Sử dụng màu 'base' làm nền chính
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    height: 60,
+    backgroundColor: colors.green,
+  },
+  headerTitle: {
+    fontSize: 22,
+    color: colors.white,
+    fontFamily: fonts.Bold,  
+  },
+  scrollViewContent: {
+    paddingTop: 20,
+    paddingHorizontal: 15,
+    paddingBottom: 80,
+  },
+  loading: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.base,
+  },
+  profileInfoCard: {
+    backgroundColor: colors.card, // Sử dụng màu 'card' làm nền cho thẻ profile
+    borderRadius: 15,
+    padding: 20,
+    alignItems: "center",
+    marginBottom: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.primary, // Dùng màu primary cho shadow
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  avatarContainer: {
+    position: "relative",
+    marginBottom: 10,
+  },
+  avatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 3,
+    borderColor: colors.green,
+  },
+  editIcon: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    backgroundColor: colors.green,
+    borderRadius: 20,
+    padding: 7,
+    borderWidth: 2,
+    borderColor: colors.white,
+  },
+  username: {
+    fontSize: 26,
+    color: colors.white, // Username màu trắng
+    marginTop: 10,
+    fontFamily: fonts.Bold,
+  },
+  email: {
+    fontSize: 16,
+    color: colors.secondary, // Email màu secondary
+    marginTop: 5,
+    fontFamily: fonts.Regular,
+  },
+  role: {
+    fontSize: 16,
+    color: colors.secondary, // Role màu secondary
+    marginTop: 5,
+    fontFamily: fonts.Regular,
+  },
+  card: {
+    backgroundColor: colors.card, // Nền thẻ dùng màu 'card'
+    borderRadius: 15,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    marginBottom: 15,
+    ...Platform.select({
+      ios: {
+        shadowColor: colors.primary, // Dùng màu primary cho shadow
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 5,
+      },
+    }),
+  },
+  cardTitle: {
+    fontSize: 18,
+    color: colors.white, // Tiêu đề thẻ màu white
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.gray, // Viền dưới dùng màu gray
+    marginBottom: 10,
+    fontFamily: fonts.SemiBold, // Dùng font Poppins-SemiBold
+  },
+  sectionItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingVertical: 12,
+    // Loại bỏ borderBottom cho mục cuối cùng trong mỗi card nếu cần
+  },
+  sectionItemLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  sectionItemText: {
+    fontSize: 16,
+    color: colors.white, // Text mục màu primary
+    marginLeft: 15,
+    fontFamily: fonts.Regular,
+  },
+  editForm: {
+    paddingVertical: 10,
+  },
+  input: {
+    height: 45,
+    backgroundColor: colors.base, // Input nền màu base
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    marginBottom: 12,
+    color: colors.white, // Text input màu trắng
+    fontFamily: fonts.Regular,
+    borderWidth: 1,
+    borderColor: colors.gray, // Viền input màu gray
+  },
+  saveButton: {
+    backgroundColor: colors.green,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 10,
+    marginBottom: 8,
+  },
+  saveButtonText: {
+    color: colors.white,
+    fontFamily: fonts.Bold,
+    fontSize: 16,
+  },
+  cancelButton: {
+    backgroundColor: colors.secondary, // Nút hủy dùng màu secondary
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  cancelButtonText: {
+    color: colors.white,
+    fontFamily: fonts.Bold,
+    fontSize: 16,
+  },
+  languageIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.gray, // Nền tag ngôn ngữ dùng màu gray
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  languageText: {
+    color: colors.primary, // Text tag ngôn ngữ màu primary
+    fontSize: 14,
+    marginRight: 4,
+    fontFamily: fonts.Regular,
+  },  
 });
 
 export default Profile;
