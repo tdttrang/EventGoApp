@@ -3,159 +3,111 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
   TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  Modal,
-  TextInput,
-  ScrollView,
+  FlatList,
   SafeAreaView,
   StatusBar,
+  Platform,
+  Dimensions,
+  Alert,
+  ScrollView,
+  Modal,
+  TextInput,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { authApi, endpoints } from "../../configs/Apis";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors } from "../../utils/colors";
-import { fonts } from "../../utils/fonts";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { Picker } from "@react-native-picker/picker";
 
 const AdminEventManager = () => {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [selectedSection, setSelectedSection] = useState(null);
+  const [data, setData] = useState([]);
+  const insets = useSafeAreaInsets();
+  const screenWidth = Dimensions.get("window").width;
+  const navigation = useNavigation();
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [editUsername, setEditUsername] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editTicketModalVisible, setEditTicketModalVisible] = useState(false);
+  const [editingTicket, setEditingTicket] = useState(null);
+  const [editTicketClass, setEditTicketClass] = useState("");
+  const [editTicketPrice, setEditTicketPrice] = useState("");
+  const [editEventDate, setEditEventDate] = useState("");
+  const [editEventLocation, setEditEventLocation] = useState("");
 
-  const [modalVisible, setModalVisible] = useState(false);
-  const [modalType, setModalType] = useState(""); // "view", "create", "edit"
-  const [selectedEvent, setSelectedEvent] = useState(null);
-
-  // Form state
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    location: "",
-    start_time: "",
-    end_time: "",
-    price: "",
-  });
 
   useEffect(() => {
-    fetchEvents();
-  }, []);
+    fetchData();
+  }, [selectedSection]);
 
-  const fetchEvents = async () => {
+  const fetchData = async () => {
     try {
-      setLoading(true);
       const token = await AsyncStorage.getItem("access");
       if (!token) {
+        console.error("No access token found");
         Alert.alert("Lỗi", "Vui lòng đăng nhập lại.");
         return;
       }
+      const api = authApi(token);
 
-      const res = await fetch(
-        "https://mynameisgiao.pythonanywhere.com/api/events/",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (!res.ok) {
-        Alert.alert("Lỗi", "Không thể tải danh sách sự kiện.");
-        setLoading(false);
-        return;
+      let endpoint = "";
+      switch (selectedSection) {
+        case "users":
+          endpoint = endpoints["admin_users"];
+          break;
+        case "events":
+          endpoint = endpoints["events"];
+          break;
+        case "tickets":
+          endpoint = endpoints["admin_tickets"];
+          break;
+        case "notifications":
+          endpoint = endpoints["admin_notifications"];
+          break;
+        default:
+          setData([]);
+          return;
       }
 
-      const data = await res.json();
-      setEvents(data.results || data);
+      const res = await api.get(endpoint);
+      setData(res.data.results || res.data); // Xử lý cả trường hợp có hoặc không có 'results'
+      if (selectedSection === "tickets") {
+        console.log("Ticket data:", res.data.results || res.data);
+      }
     } catch (error) {
-      Alert.alert("Lỗi", "Lỗi kết nối hoặc dữ liệu.");
-    } finally {
-      setLoading(false);
+      console.error(
+        "Lỗi khi lấy dữ liệu:",
+        error.response?.status,
+        error.response?.data || error.message
+      );
+      Alert.alert(
+        "Lỗi",
+        `Không thể tải dữ liệu. Mã lỗi: ${
+          error.response?.status || "Không xác định"
+        }`
+      );
+      setData([]);
     }
   };
 
-  // Mở modal xem chi tiết
-  const openViewModal = (event) => {
-    setSelectedEvent(event);
-    setModalType("view");
-    setModalVisible(true);
+  const handleEditTicket = (ticket) => {
+    setEditingTicket(ticket);
+    setEditTicketClass(ticket.ticket_class);
+    setEditTicketPrice(ticket.price.toString());
+    setEditEventDate(ticket.event?.date || "");
+    setEditEventLocation(ticket.event?.location || "");
+    setEditTicketModalVisible(true);
   };
 
-  // Mở modal tạo mới
-  const openCreateModal = () => {
-    setFormData({
-      title: "",
-      description: "",
-      location: "",
-      start_time: "",
-      end_time: "",
-      price: "",
-    });
-    setSelectedEvent(null);
-    setModalType("create");
-    setModalVisible(true);
-  };
-
-  // Mở modal sửa
-  const openEditModal = (event) => {
-    setFormData({
-      title: event.title || "",
-      description: event.description || "",
-      location: event.location || "",
-      start_time: event.start_time || "",
-      end_time: event.end_time || "",
-      price: event.price?.toString() || "",
-    });
-    setSelectedEvent(event);
-    setModalType("edit");
-    setModalVisible(true);
-  };
-
-  const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  // Gửi tạo event
-  const handleCreateEvent = async () => {
+  const handleSaveEditTicket = async () => {
     try {
       const token = await AsyncStorage.getItem("access");
-      const res = await fetch(
-        "https://mynameisgiao.pythonanywhere.com/api/events/manage/create/",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            title: formData.title,
-            description: formData.description,
-            location: formData.location,
-            start_time: formData.start_time,
-            end_time: formData.end_time,
-            price: parseFloat(formData.price),
-          }),
-        }
-      );
-
-      if (!res.ok) {
-        const errData = await res.json();
-        Alert.alert("Lỗi tạo sự kiện", JSON.stringify(errData));
-        return;
-      }
-
-      Alert.alert("Thành công", "Sự kiện đã được tạo.");
-      setModalVisible(false);
-      fetchEvents();
-    } catch (error) {
-      Alert.alert("Lỗi", "Không thể tạo sự kiện.");
-    }
-  };
-
-  // Gửi sửa event
-  const handleEditEvent = async () => {
-    if (!selectedEvent) return;
-
-    try {
-      const token = await AsyncStorage.getItem("access");
-      const res = await fetch(
-        `https://mynameisgiao.pythonanywhere.com/api/events/manage/${selectedEvent.id}/`,
+      const response = await fetch(
+        `https://mynameisgiao.pythonanywhere.com/api/admin/tickets/${editingTicket.id}/`,
         {
           method: "PUT",
           headers: {
@@ -163,344 +115,645 @@ const AdminEventManager = () => {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            title: formData.title,
-            description: formData.description,
-            location: formData.location,
-            start_time: formData.start_time,
-            end_time: formData.end_time,
-            price: parseFloat(formData.price),
+            ticket_class: editTicketClass,
+            price: editTicketPrice,
           }),
         }
       );
-
-      if (!res.ok) {
-        const errData = await res.json();
-        Alert.alert("Lỗi cập nhật sự kiện", JSON.stringify(errData));
+      if (!response.ok) {
+        const err = await response.json();
+        console.log("Lỗi cập nhật vé:", err);
+        Alert.alert(
+          "Lỗi",
+          err.error || JSON.stringify(err) || "Không thể cập nhật vé."
+        );
         return;
       }
-
-      Alert.alert("Thành công", "Sự kiện đã được cập nhật.");
-      setModalVisible(false);
-      fetchEvents();
-    } catch (error) {
-      Alert.alert("Lỗi", "Không thể cập nhật sự kiện.");
+      Alert.alert("Thành công", "Đã cập nhật thông tin vé!");
+      setEditTicketModalVisible(false);
+      fetchData();
+    } catch (err) {
+      Alert.alert("Lỗi", "Không thể cập nhật vé.");
     }
   };
 
-  const renderEventItem = ({ item }) => (
-    <View style={styles.eventCard}>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.eventTitle}>{item.title}</Text>
-        <Text style={styles.eventDate}>
-          {item.start_time?.substring(0, 10)} -{" "}
-          {item.end_time?.substring(0, 10)}
-        </Text>
-        <Text style={styles.eventLocation}>{item.location}</Text>
-        <Text style={styles.eventPrice}>
-          Giá vé: {item.price?.toLocaleString()} VND
-        </Text>
-      </View>
-      <View style={styles.buttonsRow}>
-        <TouchableOpacity
-          style={[styles.btn, styles.btnView]}
-          onPress={() => openViewModal(item)}
-        >
-          <Text style={styles.btnText}>Xem</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.btn, styles.btnEdit]}
-          onPress={() => openEditModal(item)}
-        >
-          <Text style={styles.btnText}>Sửa</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+  const handleEditUser = (userId) => {
+    const user = data.find((u) => u.id === userId); // Sửa lại dòng này
+    setEditingUser(user);
+    setEditUsername(user.username);
+    setEditEmail(user.email);
+    setEditModalVisible(true);
+  };
 
-  // Modal nội dung tùy theo modalType
-  const renderModalContent = () => {
-    if (modalType === "view" && selectedEvent) {
-      return (
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>{selectedEvent.title}</Text>
-          <Text style={styles.modalLabel}>Mô tả:</Text>
-          <Text style={styles.modalText}>{selectedEvent.description}</Text>
-          <Text style={styles.modalLabel}>Địa điểm:</Text>
-          <Text style={styles.modalText}>{selectedEvent.location}</Text>
-          <Text style={styles.modalLabel}>Thời gian:</Text>
-          <Text style={styles.modalText}>
-            {selectedEvent.start_time} - {selectedEvent.end_time}
-          </Text>
-          <Text style={styles.modalLabel}>Giá vé:</Text>
-          <Text style={styles.modalText}>
-            {selectedEvent.price?.toLocaleString()} VND
-          </Text>
+  const handleDeleteUser = async (userId) => {
+    Alert.alert(
+      "Xác nhận xóa",
+      "Bạn có chắc chắn muốn xóa user này? Hành động không thể hoàn tác.",
+      [
+        { text: "Không", style: "cancel" },
+        {
+          text: "Có",
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem("access");
+              const response = await fetch(
+                `https://mynameisgiao.pythonanywhere.com/api/admin/users/${userId}/`,
+                {
+                  method: "DELETE",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                  },
+                }
+              );
 
-          <TouchableOpacity
-            style={styles.modalCloseBtn}
-            onPress={() => setModalVisible(false)}
-          >
-            <Text style={styles.modalCloseBtnText}>Đóng</Text>
-          </TouchableOpacity>
-        </View>
+              if (!response.ok) {
+                const errorData = await response.json();
+                Alert.alert("Lỗi", errorData.error || "Không thể xóa user.");
+                return;
+              }
+
+              Alert.alert("Thành công", "User đã bị xóa.");
+              fetchData();
+            } catch (err) {
+              console.error("Lỗi deleteUser:", err);
+              Alert.alert("Lỗi", "Không thể xóa user. Vui lòng thử lại.");
+            }
+          },
+        },
+      ]
+    );
+  };  
+
+  const handleSaveEdit = async () => {
+    try {
+      const token = await AsyncStorage.getItem("access");
+      const response = await fetch(
+        `https://mynameisgiao.pythonanywhere.com/api/admin/users/${editingUser.id}/`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            username: editUsername,
+            email: editEmail,
+          }),
+        }
       );
+      if (!response.ok) {
+        const err = await response.json();
+        console.log("Lỗi cập nhật user:", err); // Thêm dòng này để xem lỗi chi tiết
+        Alert.alert(
+          "Lỗi",
+          err.error || JSON.stringify(err) || "Không thể cập nhật user."
+        );
+        return;
+      }
+      Alert.alert("Thành công", "Đã cập nhật thông tin user!");
+      setEditModalVisible(false);
+      setData((prevData) =>
+        prevData.map((u) =>
+          u.id === editingUser.id
+            ? { ...u, username: editUsername, email: editEmail }
+            : u
+        )
+      );
+      fetchData();
+      } catch (err) {
+      console.log("Lỗi ngoại lệ:", err); // Thêm dòng này để xem lỗi ngoại lệ
+      Alert.alert("Lỗi", "Không thể cập nhật user.");
     }
+  };
 
-    // Modal form tạo / sửa
-    if (modalType === "create" || modalType === "edit") {
-      return (
-        <ScrollView contentContainerStyle={styles.modalContent}>
-          <Text style={styles.modalTitle}>
-            {modalType === "create" ? "Tạo sự kiện mới" : "Chỉnh sửa sự kiện"}
-          </Text>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Tên sự kiện"
-            value={formData.title}
-            onChangeText={(text) => handleChange("title", text)}
-          />
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Mô tả"
-            multiline
-            numberOfLines={3}
-            value={formData.description}
-            onChangeText={(text) => handleChange("description", text)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Địa điểm"
-            value={formData.location}
-            onChangeText={(text) => handleChange("location", text)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Thời gian bắt đầu (YYYY-MM-DDTHH:mm:ss)"
-            value={formData.start_time}
-            onChangeText={(text) => handleChange("start_time", text)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Thời gian kết thúc (YYYY-MM-DDTHH:mm:ss)"
-            value={formData.end_time}
-            onChangeText={(text) => handleChange("end_time", text)}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Giá vé (VND)"
-            keyboardType="numeric"
-            value={formData.price}
-            onChangeText={(text) => handleChange("price", text)}
-          />
-
+  const renderItem = ({ item }) => {
+    if (selectedSection === "tickets") {
+      console.log("Ticket item:", item);
+    }
+    let displayText = "";
+    switch (selectedSection) {
+      case "users":
+        displayText = `User ID: ${item.id} - ${
+          item.username || item.email || "No Name"
+        }`;
+        break;
+      case "events":
+        displayText = `Event ID: ${item.id} - ${item.name || "No Name"}`;
+        break;
+      case "tickets":
+        return (
+          <View style={styles.itemBox}>
+            <Text style={styles.ticketTitle}>
+              {item.event?.name || "Không rõ sự kiện"}
+            </Text>
+            <View
+              style={{
+                flexDirection: "row",
+                marginTop: 4,
+                alignItems: "center",
+              }}
+            >
+              <Text style={styles.ticketLabel}>Loại vé: </Text>
+              <Text style={styles.ticketValue}>{item.ticket_class}</Text>
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                marginTop: 2,
+                alignItems: "center",
+              }}
+            >
+              <Text style={styles.ticketLabel}>Giá: </Text>
+              <Text style={styles.ticketValue}>
+                {Number(item.price).toLocaleString()}đ
+              </Text>
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                marginTop: 2,
+                alignItems: "center",
+              }}
+            >
+              <Text style={styles.ticketLabel}>Ngày: </Text>
+              <Text style={styles.ticketValue}>
+                {item.event?.date
+                  ? new Date(item.event.date).toLocaleDateString()
+                  : "Không rõ"}
+              </Text>
+            </View>
+            <View
+              style={{
+                flexDirection: "row",
+                marginTop: 2,
+                alignItems: "center",
+              }}
+            >
+              <Text style={styles.ticketLabel}>Địa điểm: </Text>
+              <Text style={styles.ticketValue}>
+                {item.event?.location || "Không rõ"}
+              </Text>
+            </View>
+          </View>
+        );
+      case "notifications":
+        return (
+          <View
+            style={[
+              styles.itemBox,
+              {
+                borderLeftWidth: 5,
+                borderLeftColor: colors.green, // luôn dùng màu xanh
+                backgroundColor: colors.card, // luôn dùng màu card
+              },
+            ]}
+          >
+            <Text
+              style={{ color: colors.green, fontSize: 16, fontFamily: "Bold" }}
+            >
+              {item.subject || item.title || "Thông báo"}
+            </Text>
+            <Text style={{ color: colors.white, marginTop: 4 }}>
+              {item.message || item.content || item.body || ""}
+            </Text>
+            <View
+              style={{
+                flexDirection: "row",
+                marginTop: 8,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ color: colors.secondary, fontSize: 13 }}>
+                {item.created_at
+                  ? new Date(item.created_at).toLocaleString()
+                  : ""}
+              </Text>
+            </View>
+          </View>
+        );
+      default:
+        displayText = "Item không xác định";
+    }
+    return (
+      <View style={styles.itemBox}>
+        <Text style={styles.itemText}>{displayText}</Text>
+        {selectedSection === "users" && item.role !== "admin" && (
           <View
             style={{
               flexDirection: "row",
-              justifyContent: "space-between",
-              marginTop: 20,
+              justifyContent: "flex-end",
+              marginTop: 10,
             }}
           >
             <TouchableOpacity
-              style={[styles.modalBtn, { backgroundColor: colors.green }]}
-              onPress={
-                modalType === "create" ? handleCreateEvent : handleEditEvent
-              }
+              style={styles.editButton}
+              onPress={() => handleEditUser(item.id)}
             >
-              <Text style={styles.modalBtnText}>
-                {modalType === "create" ? "Tạo" : "Lưu"}
-              </Text>
+              <Text style={styles.buttonText}>Sửa</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.modalBtn, { backgroundColor: "#888" }]}
-              onPress={() => setModalVisible(false)}
+              style={styles.deleteButton}
+              onPress={() => handleDeleteUser(item.id)}
             >
-              <Text style={styles.modalBtnText}>Hủy</Text>
+              <Text style={styles.buttonText}>Xóa</Text>
             </TouchableOpacity>
           </View>
-        </ScrollView>
-      );
-    }
-
-    return null;
+        )}
+      </View>
+    );
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>Quản lý sự kiện</Text>
-        <TouchableOpacity style={styles.addBtn} onPress={openCreateModal}>
-          <Text style={styles.addBtnText}>+ Thêm sự kiện</Text>
+      <StatusBar barStyle="light-content" backgroundColor={colors.green} />
+      <View
+        style={[
+          styles.header,
+          { paddingTop: insets.top, height: 60 + insets.top },
+        ]}
+      >
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}
+        >
+          <Ionicons name="arrow-back" size={24} color={colors.white} />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>Quản lý Admin</Text>
+        <View style={{ width: 24 }} />
       </View>
 
-      {loading ? (
-        <ActivityIndicator size="large" color={colors.primary} />
-      ) : (
-        <FlatList
-          data={events}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderEventItem}
-          contentContainerStyle={{ paddingBottom: 20 }}
-        />
-      )}
-
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalWrapper}>{renderModalContent()}</View>
+      <View style={styles.scrollContent}>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              selectedSection === "users" && styles.buttonActive,
+            ]}
+            onPress={() => setSelectedSection("users")}
+          >
+            <Text
+              style={[
+                styles.buttonText,
+                selectedSection === "users" && styles.buttonTextActive,
+              ]}
+            >
+              User
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              selectedSection === "events" && styles.buttonActive,
+            ]}
+            onPress={() => setSelectedSection("events")}
+          >
+            <Text
+              style={[
+                styles.buttonText,
+                selectedSection === "events" && styles.buttonTextActive,
+              ]}
+            >
+              Event
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              selectedSection === "tickets" && styles.buttonActive,
+            ]}
+            onPress={() => setSelectedSection("tickets")}
+          >
+            <Text
+              style={[
+                styles.buttonText,
+                selectedSection === "tickets" && styles.buttonTextActive,
+              ]}
+            >
+              Ticket
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.button,
+              selectedSection === "notifications" && styles.buttonActive,
+            ]}
+            onPress={() => setSelectedSection("notifications")}
+          >
+            <Text
+              style={[
+                styles.buttonText,
+                selectedSection === "notifications" && styles.buttonTextActive,
+              ]}
+            >
+              Notification
+            </Text>
+          </TouchableOpacity>
         </View>
-      </Modal>
+        {selectedSection && (
+          <FlatList
+            data={data}
+            renderItem={renderItem}
+            keyExtractor={(item) =>
+              item.id?.toString() || Math.random().toString()
+            }
+            style={styles.list}
+            ListEmptyComponent={
+              <Text style={styles.noData}>Không có dữ liệu</Text>
+            }
+          />
+        )}
+      </View>
+      {selectedSection === "users" && (
+        <Modal
+          visible={editModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setEditModalVisible(false)}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.5)",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: colors.card,
+                padding: 20,
+                borderRadius: 10,
+                width: "85%",
+              }}
+            >
+              <Text
+                style={{ color: colors.white, fontSize: 18, marginBottom: 10 }}
+              >
+                Chỉnh sửa User
+              </Text>
+              <TextInput
+                style={[styles.input, { marginBottom: 10 }]}
+                value={editUsername}
+                onChangeText={setEditUsername}
+                placeholder="Tên đăng nhập"
+                placeholderTextColor={colors.secondary}
+              />
+              <TextInput
+                style={[styles.input, { marginBottom: 20 }]}
+                value={editEmail}
+                onChangeText={setEditEmail}
+                placeholder="Email"
+                placeholderTextColor={colors.secondary}
+              />
+              <View
+                style={{ flexDirection: "row", justifyContent: "flex-end" }}
+              >
+                <TouchableOpacity
+                  style={[styles.editButton, { marginRight: 10 }]}
+                  onPress={handleSaveEdit}
+                >
+                  <Text style={styles.buttonText}>Lưu</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => setEditModalVisible(false)}
+                >
+                  <Text style={styles.buttonText}>Hủy</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+      {selectedSection === "tickets" && (
+        <Modal
+          visible={editTicketModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setEditTicketModalVisible(false)}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: "rgba(0,0,0,0.5)",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: colors.card,
+                padding: 20,
+                borderRadius: 10,
+                width: "85%",
+              }}
+            >
+              <Text
+                style={{ color: colors.white, fontSize: 18, marginBottom: 10 }}
+              >
+                Chỉnh sửa Vé
+              </Text>
+              <Text style={styles.ticketLabel}>Loại vé</Text>
+              <View
+                style={{
+                  backgroundColor: colors.base,
+                  borderRadius: 8,
+                  marginBottom: 10,
+                }}
+              >
+                <Picker
+                  selectedValue={editTicketClass}
+                  onValueChange={setEditTicketClass}
+                  style={{ color: colors.white }}
+                  dropdownIconColor={colors.secondary}
+                >
+                  <Picker.Item label="Normal" value="normal" />
+                  <Picker.Item label="VIP" value="VIP" />
+                </Picker>
+              </View>
+              <Text style={styles.ticketLabel}>Giá vé</Text>
+              <TextInput
+                style={[styles.input, { marginBottom: 20 }]}
+                value={editTicketPrice}
+                onChangeText={setEditTicketPrice}
+                placeholder="Giá vé"
+                placeholderTextColor={colors.secondary}
+                keyboardType="numeric"
+              />              
+              <View
+                style={{ flexDirection: "row", justifyContent: "flex-end" }}
+              >
+                <TouchableOpacity
+                  style={[styles.editButton, { marginRight: 10 }]}
+                  onPress={handleSaveEditTicket}
+                >
+                  <Text style={styles.buttonText}>Lưu</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => setEditTicketModalVisible(false)}
+                >
+                  <Text style={styles.buttonText}>Hủy</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 };
 
-export default AdminEventManager;
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.white,
-    paddingHorizontal: 10,
-  },
-  headerRow: {
+  container: { flex: 1, backgroundColor: colors.base },
+  header: {
+    backgroundColor: colors.green,
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 15,
-  },
-  title: {
-    fontFamily: fonts.bold,
-    fontSize: 20,
-    color: colors.primary,
-  },
-  addBtn: {
-    backgroundColor: colors.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  },
-  addBtnText: {
-    color: colors.white,
-    fontWeight: "600",
-  },
-  eventCard: {
-    flexDirection: "row",
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: "#f8f8f8",
-    marginBottom: 12,
-    alignItems: "center",
-  },
-  eventTitle: {
-    fontSize: 16,
-    fontFamily: fonts.semiBold,
-    marginBottom: 4,
-  },
-  eventDate: {
-    fontSize: 13,
-    color: "#555",
-  },
-  eventLocation: {
-    fontSize: 13,
-    color: "#777",
-  },
-  eventPrice: {
-    fontSize: 13,
-    color: colors.green,
-    marginTop: 4,
-  },
-  buttonsRow: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  btn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-  },
-  btnView: {
-    backgroundColor: colors.blue,
-    marginRight: 6,
-  },
-  btnEdit: {
-    backgroundColor: colors.orange,
-  },
-  btnText: {
-    color: colors.white,
-    fontWeight: "600",
-  },
-
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.4)",
-    justifyContent: "center",
     paddingHorizontal: 20,
   },
-  modalWrapper: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 20,
-    maxHeight: "90%",
+  backButton: {
+    paddingRight: 10,
   },
-
-  modalContent: {
-    // flex: 1,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 12,
-    textAlign: "center",
-  },
-  modalLabel: {
-    fontWeight: "600",
-    marginTop: 10,
-  },
-  modalText: {
-    fontSize: 14,
-    color: "#333",
-    marginTop: 4,
-  },
-  modalCloseBtn: {
-    marginTop: 20,
-    backgroundColor: colors.primary,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  modalCloseBtnText: {
-    color: "white",
-    fontWeight: "700",
-    textAlign: "center",
-  },
-
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginTop: 8,
-    fontSize: 14,
-  },
-  textArea: {
-    height: 80,
-    textAlignVertical: "top",
-  },
-  modalBtn: {
+  headerTitle: {
+    fontSize: 20,
+    color: colors.white,
+    fontFamily: "Bold",
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 6,
-    marginHorizontal: 6,
-  },
-  modalBtnText: {
-    color: "white",
-    fontWeight: "700",
     textAlign: "center",
+  },
+  buttonContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginBottom: 20,
+  },
+  button: {
+    backgroundColor: colors.card,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 15,
+    marginBottom: 10,
+    width: (Dimensions.get("window").width - 60) / 2,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: { elevation: 5 },
+    }),
+  },
+  buttonActive: {
+    backgroundColor: colors.green,
+  },
+  buttonTextActive: {
+    color: "#fff",
+  },
+  buttonText: {
+    color: colors.green,
+    fontSize: 15,
+    fontFamily: "SemiBold",
+    textAlign: "center",
+  },
+  list: {
+    marginTop: 10,
+    paddingBottom: 20,
+  },
+  itemBox: {
+    backgroundColor: colors.card,
+    padding: 15,
+    borderRadius: 15,
+    marginBottom: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+      },
+      android: { elevation: 5 },
+    }),
+  },
+  itemText: {
+    color: colors.white,
+    fontSize: 16,
+    fontFamily: "Regular",
+  },
+  noData: {
+    color: colors.secondary,
+    textAlign: "center",
+    fontSize: 16,
+    fontFamily: "SemiBold",
+    marginVertical: 8,
+  },
+  scrollContent: {
+    flex: 1,
+    padding: 20,
+  },
+  input: {
+    backgroundColor: colors.base,
+    color: colors.white,
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: colors.secondary,
+  },
+  actionButton: {
+    backgroundColor: colors.green,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    marginRight: 8,
+    marginBottom: 4,
+  },
+  editButton: {
+    backgroundColor: "#007bff",
+    paddingVertical: 6, // giảm từ 10 xuống 6
+    paddingHorizontal: 14, // giảm từ 20 xuống 14
+    borderRadius: 8,
+    marginRight: 8, // giảm margin
+    marginBottom: 4,
+  },
+  deleteButton: {
+    backgroundColor: "#dc3545",
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  cancelButton: {
+    backgroundColor: colors.secondary,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontFamily: "SemiBold",
+    textAlign: "center",
+  },
+  ticketTitle: {
+    color: colors.green,
+    fontSize: 17,
+    fontFamily: "Bold",
+    marginBottom: 2,
+  },
+  ticketLabel: {
+    color: colors.secondary,
+    fontSize: 15,
+    fontFamily: "SemiBold",
+  },
+  ticketValue: {
+    color: colors.white,
+    fontSize: 15,
+    fontFamily: "Regular",
   },
 });
+
+export default AdminEventManager;

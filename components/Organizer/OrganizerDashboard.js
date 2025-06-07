@@ -9,60 +9,76 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MyUserContext } from "../../configs/MyContexts";
 import { endpoints, authApi } from "../../configs/Apis";
 
-const AdminDashboard = () => {
+const OrganizerDashboard = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { setLoggedInUser } = React.useContext(MyUserContext);
 
   // Dữ liệu tổng quan
   const [summaryData, setSummaryData] = useState({
-    pendingOrganizers: 0,
-    totalEvents: 0,
-    totalUsers: 0,
+    soldTickets: 0,
+    totalRevenue: 0,
+    totalComments: 0,
   });
-
   useEffect(() => {
     const fetchSummary = async () => {
       try {
         const token = await AsyncStorage.getItem("access");
-        const response = await fetch(
-          "https://mynameisgiao.pythonanywhere.com/api/admin/users/",
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-        const data = await response.json();
-        // Nếu API trả về mảng user
-        const users = Array.isArray(data) ? data : data.results || [];
-        const totalUsers = users.length;
-        const totalOrganizers = users.filter(
-          (u) => u.role === "organizer" && u.is_approved === false
-        ).length;
+        const api = authApi(token);
+        // 1. Lấy danh sách tất cả sự kiện của organizer
+        const eventsRes = await api.get("events");
+        const events = eventsRes.data.results || eventsRes.data || [];
+        const eventIds = events.map((e) => e.id);
 
-        // Lấy event
-        const eventsRes = await fetch(
-          "https://mynameisgiao.pythonanywhere.com/api/events/",
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        // 2. Lặp qua từng event để lấy số vé, doanh thu, phản hồi
+        let soldTickets = 0;
+        let totalRevenue = 0;
+        let totalComments = 0;
 
-        const eventsData = await eventsRes.json();
-        const totalEvents = Array.isArray(eventsData) ? eventsData.length : 0;
+        for (const eventId of eventIds) {
+          console.log("Processing eventId:", eventId);
+          // Số vé đã bán
+          try {
+            const soldTicketsRes = await api.get(
+              endpoints.organizer_event_sold_tickets(eventId)
+            );
+            soldTickets +=
+              typeof soldTicketsRes.data.sold_tickets === "number"
+                ? soldTicketsRes.data.sold_tickets
+                : Array.isArray(soldTicketsRes.data)
+                ? soldTicketsRes.data.length
+                : 0;
+          } catch {}
 
+          // Doanh thu
+          try {
+            const revenueRes = await api.get(
+              endpoints.organizer_event_total_revenue(eventId)
+            );
+            totalRevenue +=
+              typeof revenueRes.data.total_revenue === "number"
+                ? revenueRes.data.total_revenue
+                : 0;
+          } catch {}
+
+          // Phản hồi
+          try {
+            const feedbackRes = await api.get(
+              endpoints.organizer_event_reviews_with_replies(eventId)
+            );
+            totalComments += Array.isArray(feedbackRes.data.results)
+              ? feedbackRes.data.results.length
+              : 0;
+          } catch {}
+        }
+        console.log("soldTickets:", soldTickets);
+        console.log("totalRevenue:", totalRevenue);
+        console.log("totalComments:", totalComments);
         setSummaryData((prev) => ({
           ...prev,
-          totalUsers,
-          pendingOrganizers: totalOrganizers,
-          totalEvents,
+          soldTickets,
+          totalRevenue,
+          totalComments,
         }));
       } catch (err) {
         console.log("Error fetching summary data:", err);
@@ -96,7 +112,7 @@ const AdminDashboard = () => {
           { paddingTop: insets.top, height: 56 + insets.top },
         ]}
       >
-        <Text style={styles.logo}>Admin Dashboard</Text>
+        <Text style={styles.logo}>Trang Thống Kê</Text>
         <TouchableOpacity onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={24} color={colors.white} />
         </TouchableOpacity>
@@ -106,16 +122,20 @@ const AdminDashboard = () => {
       <ScrollView style={styles.scrollViewContent}>
         {/* Tổng Quan Hệ Thống */}
         <View style={styles.summaryCard}>
-          <Text style={styles.sectionTitle}>Tổng quan Hệ thống</Text>
+          <Text style={styles.sectionTitle}>Tổng quan</Text>
           <View style={styles.summaryInfo}>
             <Text style={styles.summaryItem}>
-              Số Organizer chờ duyệt: {summaryData.pendingOrganizers}
+              Tổng số vé đã bán: {summaryData.soldTickets}
             </Text>
             <Text style={styles.summaryItem}>
-              Tổng số Sự kiện: {summaryData.totalEvents}
+              Tổng doanh thu:{" "}
+              {typeof summaryData.totalRevenue === "number" &&
+              !isNaN(summaryData.totalRevenue)
+                ? summaryData.totalRevenue.toLocaleString()
+                : "0"}
             </Text>
             <Text style={styles.summaryItem}>
-              Người tham gia toàn hệ thống: {summaryData.totalUsers}
+              Tổng số bình luận của các sự kiện: {summaryData.totalComments}
             </Text>
           </View>
         </View>
@@ -126,19 +146,19 @@ const AdminDashboard = () => {
             style={styles.actionButton}
             onPress={() => handleQuickAction("approveOrganizer")}
           >
-            <Text style={styles.actionButtonText}>Duyệt Organizer</Text>
+            <Text style={styles.actionButtonText}>Vé đã bán</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => handleQuickAction("manageEvents")}
           >
-            <Text style={styles.actionButtonText}>Quản lý</Text>
+            <Text style={styles.actionButtonText}>Doanh thu</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.actionButton}
             onPress={() => handleQuickAction("reports")}
           >
-            <Text style={styles.actionButtonText}>Báo cáo</Text>
+            <Text style={styles.actionButtonText}>Bình luận</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -209,4 +229,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AdminDashboard;
+export default OrganizerDashboard;

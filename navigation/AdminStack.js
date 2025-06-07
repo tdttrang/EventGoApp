@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import AdminDashBoard from "../components/Admin/AdminDashboard";
 import AdminEventManager from "../components/Admin/AdminEventManager";
 import AdminStats from "../components/Admin/AdminStats";  
+import AdminUserManager from "../components/Admin/AdminUserManager"; 
 
 const Stack = createNativeStackNavigator();
 
@@ -10,6 +11,7 @@ const AdminStack = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="AdminDashBoard" component={AdminDashBoard} />
+      <Stack.Screen name="AdminUserManager" component={AdminUserManager} />
       <Stack.Screen name="AdminEventManager" component={AdminEventManager} />
       <Stack.Screen name="AdminStats" component={AdminStats} />
     </Stack.Navigator>

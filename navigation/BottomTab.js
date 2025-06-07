@@ -7,6 +7,7 @@ import Tickets from "../components/Tickets/Tickets";
 import Notifications from "../components/Notifications/Notifications";
 import Profile from "../components/User/Profile";
 import ManageEvents from "../components/Event/ManageEvents";
+import OrganizerDashboard from "../components/Organizer/OrganizerDashboard";
 import { MyUserContext } from "../configs/MyContexts";
 import { colors } from "../utils/colors";
 
@@ -20,12 +21,17 @@ export default function BottomTab() {
   const tabs =
     loggedInUser?.role === "organizer"
       ? [
-          { name: "Trang chủ", component: Home, icon: "home" },
           {
             name: "Quản lý",
             component: ManageEvents,
             icon: "calendar",
-          }, 
+          },
+          {
+            name: "Thống kê",
+            component: OrganizerDashboard,
+            icon: "stats-chart",
+          },
+
           {
             name: "Thông báo",
             component: Notifications,
@@ -46,7 +52,9 @@ export default function BottomTab() {
 
   return (
     <Tab.Navigator
-      initialRouteName="Trang chủ"
+      initialRouteName={
+        loggedInUser?.role === "organizer" ? "Quản lý" : "Trang chủ"
+      }
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarIcon: ({ focused, color, size }) => {
@@ -62,6 +70,8 @@ export default function BottomTab() {
             iconName = focused ? "notifications" : "notifications-outline";
           else if (route.name === "Tài khoản")
             iconName = focused ? "person" : "person-outline";
+          else if (route.name === "Thống kê")
+            iconName = focused ? "stats-chart" : "stats-chart-outline";
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },

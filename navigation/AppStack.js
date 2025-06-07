@@ -11,6 +11,7 @@ import Tickets from "../components/Tickets/Tickets";
 import Reviews from "../components/Event/ReviewsNReply";
 import ManageEvents from "../components/Event/ManageEvents";
 import Notifications from "../components/Notifications/Notifications";
+import OrganizerDashboard from "../components/Organizer/OrganizerDashboard";
 
 
 const Stack = createNativeStackNavigator();
@@ -28,6 +29,8 @@ const AppStack = () => (
     <Stack.Screen name="Reviews" component={Reviews} />
     <Stack.Screen name="ManageEvents" component={ManageEvents} />
     <Stack.Screen name="Notifications" component={Notifications} />
+    <Stack.Screen name="OrganizerDashboard" component={OrganizerDashboard} />
+
   </Stack.Navigator>
 );
 
